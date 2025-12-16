@@ -1,0 +1,40 @@
+server:
+  port: 8080        # 服务端口
+  servlet:
+    context-path: / # 项目访问路径，默认为 /
+
+spring:
+  # 数据库配置 (SQL Server)
+  datasource:
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    # ⚠️注意：localhost 表示本机，1433 是默认端口，databaseName 是我们之前约定的数据库名
+    # encrypt=false;trustServerCertificate=true 是为了解决本地开发 SSL 报错的问题
+    url: jdbc:sqlserver://localhost:1433;databaseName=CloudDiskDB;encrypt=false;trustServerCertificate=true
+    username: sa            # 你的 SQL Server 用户名 (通常是 sa)
+    password: 123456 # ⚠️【修改这里】填你安装 SQL Server 时设置的密码
+
+  # 文件上传限制 (角色B需要的配置)
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 1024MB      # 单个文件最大
+      max-request-size: 1024MB   # 单次请求最大
+
+  # Thymeleaf 模板配置 (前端页面)
+  thymeleaf:
+    cache: false             # 开发时关闭缓存，改了 HTML 刷新就能看到
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+    mode: HTML5
+
+# MyBatis-Plus 配置 (简化开发)
+mybatis-plus:
+  # 打印 SQL 日志 (非常重要，开发时能看到 SQL 语句)
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true # 开启下划线转驼峰 (user_id -> userId)
+  # XML 映射文件位置
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体类别名包 (可选)
+  ype-aliases-package: com.buaa.clouddisk.module.**.entity
