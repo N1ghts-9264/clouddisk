@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>网盘首页</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<nav class="navbar navbar-dark bg-primary px-4">
+    <a class="navbar-brand" href="#">☁️ 高校网盘系统</a>
+    <div class="d-flex text-white align-items-center">
+        <span class="me-3" id="navUsername">正在加载...</span>
+        <button onclick="logout()" class="btn btn-sm btn-light text-primary">退出</button>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <div class="alert alert-success">
+        <h4>🎉 欢迎回来！</h4>
+        <p>你已经成功登录，这里是系统首页。</p>
+        <p>Role B/C/D 的功能将在这里展示。</p>
+    </div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script>
+    // 页面加载完成后，请求后端获取当前用户信息
+    $(document).ready(function() {
+        $.ajax({
+            url: '/api/user/info', // 你的后端接口
+            type: 'GET',
+            success: function(res) {
+                if (res.code === 200) {
+                    $('#navUsername').text(res.data.username);
+                } else {
+                    alert("登录失效");
+                    location.href = '/login';
+                }
+            }
+        });
+    });
+
+    // 退出登录
+    function logout() {
+        $.post('/api/user/logout', function() {
+            location.href = '/login';
+        });
+    }
+</script>
+</body>
+</html>

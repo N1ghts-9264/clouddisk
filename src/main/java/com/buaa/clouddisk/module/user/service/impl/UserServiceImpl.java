@@ -51,6 +51,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public User login(UserLoginDTO loginDTO, HttpSession session) {
+        // === 新增验证码校验逻辑 START ===
+
+        // 1. 从 Session 获取生成的验证码
+        String sessionCode = (String) session.getAttribute("CAPTCHA_CODE");
+
+        // 2. 校验是否过期
+        if (sessionCode == null) {
+            throw new RuntimeException("验证码已过期，请刷新重试");
+        }
+
+        // 3. 校验是否正确 (忽略大小写)
+        if (!sessionCode.equalsIgnoreCase(loginDTO.getCaptcha())) {
+            throw new RuntimeException("验证码错误");
+        }
+
+        // 4. 验证通过后，立刻移除 Session 中的验证码（防止重复使用）
+        session.removeAttribute("CAPTCHA_CODE");
+
+        // === 新增验证码校验逻辑 END ===
+
         // 1. 根据用户名查询
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, loginDTO.getUsername());

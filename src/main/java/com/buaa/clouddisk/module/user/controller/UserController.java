@@ -1,5 +1,12 @@
 package com.buaa.clouddisk.module.user.controller;
 
+import com.google.code.kaptcha.impl.DefaultKaptcha;
+import javax.imageio.ImageIO;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+
 import com.buaa.clouddisk.common.result.Result;
 import com.buaa.clouddisk.common.util.UserContext;
 import com.buaa.clouddisk.module.user.dto.UserLoginDTO;
@@ -19,6 +26,7 @@ import javax.servlet.http.HttpSession;
 public class UserController {
 
     private final IUserService userService;
+    private final DefaultKaptcha defaultKaptcha;
 
     /**
      * 用户注册
@@ -67,5 +75,33 @@ public class UserController {
     public Result<String> logout(HttpSession session) {
         userService.logout(session);
         return Result.success("退出成功");
+    }
+
+    /**
+     * 获取图形验证码
+     * 注意：这个接口不返回 JSON，而是直接返回图片流
+     */
+    @GetMapping("/captcha")
+    public void getCaptcha(HttpServletResponse response, HttpSession session) throws IOException {
+        // 1. 生成 4 位随机文本 (例如 "x9z1")
+        String text = defaultKaptcha.createText();
+
+        // 2. 存入 Session，用于后续登录校验 (Key = "CAPTCHA_CODE")
+        session.setAttribute("CAPTCHA_CODE", text);
+        log.info("生成验证码: {}", text);
+
+        // 3. 生成图片
+        BufferedImage image = defaultKaptcha.createImage(text);
+
+        // 4. 设置响应头，告诉浏览器这是一张图片，不要缓存
+        response.setDateHeader("Expires", 0);
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+        response.setHeader("Pragma", "no-cache");
+        response.setContentType("image/jpeg");
+
+        // 5. 输出图片流
+        ServletOutputStream out = response.getOutputStream();
+        ImageIO.write(image, "jpg", out);
+        out.flush();
     }
 }

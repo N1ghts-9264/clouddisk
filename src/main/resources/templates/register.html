@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>注册 - 高校网盘</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f5f7fa; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card { width: 400px; border: none; }
+    </style>
+</head>
+<body>
+
+<div class="card p-4">
+    <h3 class="text-center mb-4">用户注册</h3>
+    <form id="regForm">
+        <div class="mb-3">
+            <label>用户名</label>
+            <input type="text" class="form-control" name="username" required>
+        </div>
+        <div class="mb-3">
+            <label>密码</label>
+            <input type="password" class="form-control" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-success w-100">立即注册</button>
+        <div class="text-center mt-3">
+            <a href="/login">已有账号？去登录</a>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script>
+    $('#regForm').submit(function(e) {
+        e.preventDefault();
+        var data = {
+            username: $('input[name="username"]').val(),
+            password: $('input[name="password"]').val()
+        };
+
+        $.ajax({
+            url: '/api/user/register',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function(res) {
+                if (res.code === 200) {
+                    alert("注册成功，快去登录吧！");
+                    location.href = '/login';
+                } else {
+                    alert(res.msg);
+                }
+            }
+        });
+    });
+</script>
+</body>
+</html>

@@ -20,7 +20,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/share/check",     // 提取码校验
                         "/error",               // 系统错误页
                         "/", "/index.html",     // 静态页面
-                        "/**/*.html", "/**/*.css", "/**/*.js", "/**/*.ico" // 静态资源
+                        "/**/*.html", "/**/*.css", "/**/*.js", "/**/*.ico", // 静态资源
+                        // 在 excludePathPatterns 里追加：
+                        "/login",
+                        "/register",
+                        "/api/user/captcha" // 确保验证码接口也放行
                 );
     }
 }
