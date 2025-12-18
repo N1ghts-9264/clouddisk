@@ -1,78 +1,372 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>登录 - 高校网盘</title>
-    <!-- 引入 Bootstrap 5 -->
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - HiJDK Cloud Drive</title>
+    <!-- Bootstrap 5 -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.staticfile.org/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+
     <style>
-        body { background-color: #f5f7fa; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .card { width: 400px; border: none; shadow: 0 0 20px rgba(0,0,0,0.1); }
-        .captcha-box { cursor: pointer; }
+        :root {
+            /* 稍微加深主色调，使其更稳重，减少“廉价感” */
+            --brand-blue: #0b5ed7;
+            --brand-hover: #0a58ca;
+            /* 定义更柔和的阴影变量 */
+            --shadow-soft: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            /* 强制使用系统级无衬线字体，保证不同系统下的清晰度 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            /* --- 背景图设置 START --- */
+            /* 引用方式：默认指向 static/images/login-bg.png */
+            background-image: url('/images/login-bg.png');
+            background-size: cover;      /* 覆盖整个视口 */
+            background-position: center; /* 居中显示 */
+            background-repeat: no-repeat;
+            background-attachment: fixed; /* 固定背景 */
+            /* --- 背景图设置 END --- */
+        }
+
+        /* 背景遮罩：微调渐变角度，让光线感更自然 */
+        .bg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(125deg, rgba(13, 110, 253, 0.35) 0%, rgba(0, 0, 0, 0.65) 100%);
+            z-index: 1;
+        }
+
+        /* 1. 品牌 Logo 优化 */
+        .brand-logo {
+            position: absolute;
+            top: 30px; /* 稍微下移，增加呼吸感 */
+            left: 45px;
+            color: white;
+            font-weight: 600; /* 不需要太粗，600 semi-bold 更有质感 */
+            font-size: 1.4rem; /* 稍微调小一点点，显得更精致 */
+            letter-spacing: 0.5px; /* 增加字间距，提升高级感 */
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10;
+            /* 增加文字阴影，保证在任何背景图上都清晰可见 */
+            text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+        .brand-logo:hover { color: rgba(255, 255, 255, 0.9); }
+        .brand-logo i { font-size: 1.6rem; } /* 图标稍微比文字大一点 */
+
+        .main-container {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 2. 左侧宣传区优化 */
+        .intro-section {
+            color: white;
+            padding-right: 60px;
+            text-shadow: 0 4px 16px rgba(0,0,0,0.4); /* 增强文字与背景的分离度 */
+        }
+        .intro-title {
+            font-size: 3.5rem; /* 稍微加大 */
+            font-weight: 800;  /* 加粗，形成视觉重心 */
+            margin-bottom: 24px;
+            line-height: 1.15;
+            letter-spacing: -1px; /* 标题字间距收紧，更具现代感 */
+        }
+        .intro-desc {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.9); /* 降低纯白度，减少刺眼感 */
+            margin-bottom: 35px;
+            font-weight: 400;
+            line-height: 1.6; /* 增加行高，提升可读性 */
+        }
+        .feature-badges span {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 18px; /* 增加内边距 */
+            border-radius: 50px; /* 完全胶囊状 */
+            font-size: 0.9rem;
+            margin-right: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3); /* 细微边框 */
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* 3. 登录卡片高级感优化 */
+        .login-card {
+            /* 调整透明度：0.9 -> 0.85，稍微透一点点背景色进来，融合感更强 */
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(25px) saturate(180%); /* 增加 saturate 提升通透感 */
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+
+            border-radius: 20px; /* 更圆润的角 */
+            padding: 45px 40px; /* 增加内部留白 */
+            width: 100%;
+            max-width: 440px; /* 稍微加宽，避免局促 */
+
+            /* 关键：利用边框模拟光源，左上白，右下暗，制造玻璃厚度感 */
+            border-top: 1px solid rgba(255, 255, 255, 0.8);
+            border-left: 1px solid rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+            border-right: 1px solid rgba(255, 255, 255, 0.4);
+
+            box-shadow: var(--shadow-soft);
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .login-card:hover {
+            transform: translateY(-8px); /* 悬浮幅度增加 */
+        }
+
+        .card-title {
+            font-weight: 700;
+            color: #1a1f2c; /* 深灰偏蓝，比纯黑高级 */
+            margin-bottom: 35px;
+            font-size: 1.75rem;
+            letter-spacing: -0.5px;
+        }
+
+        /* 输入框优化 */
+        .form-control, .input-group-text {
+            background-color: rgba(255, 255, 255, 0.6); /* 输入框半透明 */
+            border: 1px solid #e1e5eb;
+            padding: 12px 16px; /* 更大的点击区域 */
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        .input-group-text { color: #6c757d; }
+
+        .form-control:focus {
+            background-color: #fff;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15); /* 更柔和的聚焦光晕 */
+            z-index: 3;
+        }
+        /* 聚焦时图标也变色 */
+        .input-group:focus-within .input-group-text {
+            border-color: var(--brand-blue);
+            color: var(--brand-blue);
+            background-color: #fff;
+        }
+
+        /* 4. 验证码区域优化 */
+        .captcha-row {
+            display: flex;
+            gap: 12px; /* 使用 gap 代替 margin，间距更稳定 */
+            height: 50px; /* 统一定义高度 */
+        }
+        .captcha-input {
+            flex: 1; /* 自动填充剩余空间 */
+            height: 100%;
+        }
+        .captcha-img-box {
+            flex: 0 0 120px; /* 固定宽度，防止图片拉伸 */
+            height: 100%;
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden; /* 防止图片圆角溢出 */
+            border: 1px solid #e1e5eb;
+            transition: opacity 0.2s;
+            background: #fff; /* 图片加载前的底色 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .captcha-img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 保证图片填满容器且不变形 */
+        }
+        .captcha-img-box:hover { opacity: 0.85; border-color: var(--brand-blue); }
+
+        /* 按钮优化 */
+        .btn-login {
+            background-color: var(--brand-blue);
+            border: none;
+            padding: 14px; /* 加高按钮 */
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2); /* 按钮投影 */
+            transition: all 0.3s;
+        }
+        .btn-login:hover {
+            background-color: var(--brand-hover);
+            transform: translateY(-2px); /* 按钮微悬浮 */
+            box-shadow: 0 6px 16px rgba(13, 110, 253, 0.3);
+        }
+        .btn-login:disabled {
+            background-color: #a0c4ff;
+            transform: none;
+        }
+
+        .footer-link {
+            margin-top: 25px;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 991px) {
+            .intro-section { display: none; }
+            .login-card { max-width: 92%; margin: 0 auto; padding: 30px 25px; }
+        }
     </style>
 </head>
 <body>
 
-<div class="card p-4">
-    <h3 class="text-center mb-4">☁️ 高校网盘登录</h3>
-    <form id="loginForm">
-        <div class="mb-3">
-            <label>用户名</label>
-            <input type="text" class="form-control" name="username" required>
-        </div>
-        <div class="mb-3">
-            <label>密码</label>
-            <input type="password" class="form-control" name="password" required>
-        </div>
-        <div class="mb-3">
-            <label>验证码</label>
-            <div class="input-group">
-                <input type="text" class="form-control" name="captcha" required>
-                <!-- 验证码图片，点击刷新 -->
-                <img src="/api/user/captcha" class="captcha-box" id="captchaImg" title="点击刷新">
+<!-- 背景遮罩层 (新增) -->
+<div class="bg-overlay"></div>
+
+<!-- 左上角 Logo -->
+<a href="#" class="brand-logo">
+    <i class="bi bi-cloud-check-fill"></i>
+    <span>HiJDK Cloud Drive</span> <!-- 包裹 span 方便控制 -->
+</a>
+
+<!-- 主内容区 -->
+<div class="container-fluid main-container">
+    <div class="row w-100 align-items-center justify-content-center">
+
+        <!-- 左侧宣传语 -->
+        <div class="col-lg-7 d-none d-lg-block">
+            <div class="container intro-section ps-5">
+                <h1 class="intro-title">安全 · 高效 · 智能<br>个人云存储解决方案</h1>
+                <p class="intro-desc">HiJDK 网盘为您提供提供安全可靠的服务，<br>随时随地，畅享优质传输体验。</p>
+                <div class="feature-badges">
+                    <span><i class="bi bi-shield-lock"></i> 个人存储</span>
+                    <span><i class="bi bi-lightning-charge"></i> 文件传输</span>
+                    <span><i class="bi bi-hdd-network"></i> 资源分享</span>
+                </div>
             </div>
         </div>
-        <button type="submit" class="btn btn-primary w-100">登录</button>
-        <div class="text-center mt-3">
-            <a href="/register">没有账号？去注册</a>
+
+        <!-- 右侧登录卡片 -->
+        <div class="col-lg-4 col-md-8 col-12">
+            <div class="login-card">
+                <h3 class="card-title text-center">账号登录</h3>
+
+                <form id="loginForm">
+                    <div class="mb-3 input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" class="form-control" name="username" placeholder="请输入用户名" required>
+                    </div>
+
+                    <div class="mb-3 input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" class="form-control" name="password" placeholder="请输入密码" required>
+                    </div>
+
+                    <div class="mb-4 captcha-row">
+                        <input type="text" class="form-control captcha-input" name="captcha" placeholder="请输入验证码" required autocomplete="off">
+                        <!-- 包裹一层 div 用于控制圆角和边框 -->
+                        <div class="captcha-img-box" title="点击刷新验证码">
+                            <img src="/api/user/captcha" id="captchaImg" alt="验证码">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-login" id="loginBtn">
+                        <span id="btnText">立即登录</span>
+                        <div id="btnLoading" class="spinner-border spinner-border-sm text-light d-none" role="status"></div>
+                    </button>
+
+                    <div class="footer-link">
+                        还没有账号？ <a th:href="@{/register}">立即注册 <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                </form>
+            </div>
         </div>
-    </form>
+    </div>
 </div>
 
-<!-- 引入 jQuery -->
-<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<!-- jQuery (与之前一致，无需变动) -->
+<script src="/js/jquery.min.js"></script>
 <script>
-    // 1. 点击刷新验证码 (加个时间戳防止浏览器缓存)
-    $('#captchaImg').click(function() {
-        $(this).attr('src', '/api/user/captcha?t=' + new Date().getTime());
-    });
+    $(document).ready(function() {
+        $('#captchaImg').click(function() {
+            $(this).attr('src', '/api/user/captcha?t=' + new Date().getTime());
+        });
+        // ============================
+        // 【新增】验证码点击刷新逻辑
+        // ============================
 
-    // 2. 提交表单
-    $('#loginForm').submit(function(e) {
-        e.preventDefault(); // 阻止表单默认提交
+        // 1. 绑定点击事件
+        $('#captchaImg').click(function() {
+            // 2. 获取当前图片的 src 基础路径 (去掉之前的参数)
+            // 这里直接硬编码接口路径是最稳妥的，避免解析错误
+            var captchaUrl = '/api/user/captcha';
 
-        // 收集数据转成 JSON
-        var data = {
-            username: $('input[name="username"]').val(),
-            password: $('input[name="password"]').val(),
-            captcha: $('input[name="captcha"]').val()
-        };
+            // 3. 重置 src 属性
+            // 关键点：追加 ?t=时间戳
+            // 浏览器看到 URL 变了（虽然路径没变，但参数变了），就会强制向后端发起新请求
+            $(this).attr('src', captchaUrl + '?t=' + new Date().getTime());
+        });
 
-        $.ajax({
-            url: '/api/user/login',
-            type: 'POST',
-            contentType: 'application/json', // 必须指定 JSON
-            data: JSON.stringify(data),      // 对象转 JSON 字符串
-            success: function(res) {
-                if (res.code === 200) {
-                    location.href = '/index'; // 登录成功跳首页
-                } else {
-                    alert(res.msg); // 失败提示
-                    $('#captchaImg').click(); // 刷新验证码
+        // [可选优化] 如果为了点击体验更好，也可以让外层盒子点击时触发图片刷新
+        $('.captcha-img-box').click(function() {
+             // 避免冒泡导致触发两次，判断一下当前点击的目标
+             if(event.target.id !== 'captchaImg') {
+                 $('#captchaImg').click();
+             }
+        });
+        $('#loginForm').submit(function(e) {
+            e.preventDefault();
+            let btn = $('#loginBtn');
+            let btnText = $('#btnText');
+            let btnLoading = $('#btnLoading');
+
+            btn.prop('disabled', true);
+            btnText.text('登录中...');
+            btnLoading.removeClass('d-none');
+
+            var data = {
+                username: $('input[name="username"]').val(),
+                password: $('input[name="password"]').val(),
+                captcha: $('input[name="captcha"]').val()
+            };
+
+            $.ajax({
+                url: '/api/user/login',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if (res.code === 200) {
+                        btn.removeClass('btn-primary').addClass('btn-success');
+                        btnText.text('登录成功');
+                        btnLoading.addClass('d-none');
+                        setTimeout(function() { location.href = '/index'; }, 500);
+                    } else {
+                        alert(res.msg || '登录失败');
+                        resetBtn();
+                        $('#captchaImg').click();
+                        $('input[name="captcha"]').val('');
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = '服务器连接失败';
+                    if(xhr.responseJSON && xhr.responseJSON.msg) errorMsg = xhr.responseJSON.msg;
+                    alert(errorMsg);
+                    resetBtn();
                 }
-            },
-            error: function() {
-                alert('服务器错误');
+            });
+
+            function resetBtn() {
+                btn.prop('disabled', false);
+                btn.removeClass('btn-success').addClass('btn-primary');
+                btnText.text('立即登录');
+                btnLoading.addClass('d-none');
             }
         });
     });

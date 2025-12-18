@@ -11,20 +11,32 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new LoginInterceptor())
-                .addPathPatterns("/**") // 拦截所有接口
+                .addPathPatterns("/**") // 拦截所有
                 // 放行白名单
                 .excludePathPatterns(
-                        "/api/user/login",      // 登录
-                        "/api/user/register",   // 注册
-                        "/api/share/info/**",   // 分享信息(游客可看)
-                        "/api/share/check",     // 提取码校验
-                        "/error",               // 系统错误页
-                        "/", "/index.html",     // 静态页面
-                        "/**/*.html", "/**/*.css", "/**/*.js", "/**/*.ico", // 静态资源
-                        // 在 excludePathPatterns 里追加：
+                        "/api/user/login",
+                        "/api/user/register",
+                        "/api/share/info/**",
+                        "/api/share/check",
+                        "/error",
+                        "/", "/index.html",
+
+                        // === 核心修复点 START ===
+                        "/images/**",       // 放行 images 目录下所有文件
+                        "/**/*.png",        // 放行所有 png 图片
+                        "/**/*.jpg",        // 放行所有 jpg 图片
+                        "/**/*.jpeg",       // 放行所有 jpeg 图片
+                        "/**/*.gif",        // 放行所有 gif 图片
+                        // === 核心修复点 END ===
+                        // === 新增放行本地静态资源 ===
+                        "/css/**",
+                        "/js/**",
+                        // ========================
+
+                        "/**/*.html", "/**/*.css", "/**/*.js", "/**/*.ico",
                         "/login",
                         "/register",
-                        "/api/user/captcha" // 确保验证码接口也放行
+                        "/api/user/captcha"
                 );
     }
 }

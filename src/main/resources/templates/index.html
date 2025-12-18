@@ -1,52 +1,261 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>网盘首页</title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的云盘 - HiJDK Cloud Drive</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.staticfile.org/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 240px;
+            --brand-blue: #0d6efd;
+            --bg-light: #f8f9fa;
+        }
+
+        body { background-color: var(--bg-light); overflow: hidden; }
+
+        /* 顶部导航 */
+        .navbar {
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+            height: 64px;
+        }
+        .navbar-brand {
+            font-weight: 700; color: var(--brand-blue) !important;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        /* 侧边栏布局 */
+        .wrapper { display: flex; height: calc(100vh - 64px); }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: #fff;
+            border-right: 1px solid #eee;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-item {
+            padding: 2px 15px;
+            margin-bottom: 4px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: #4a5568;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: rgba(13, 110, 253, 0.05);
+            color: var(--brand-blue);
+        }
+
+        .nav-link.active {
+            background: var(--brand-blue);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+        }
+
+        /* 主内容区 */
+        .main-container {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+            background: var(--bg-light);
+        }
+
+        .content-card {
+            background: #fff;
+            border-radius: 15px;
+            min-height: 100%;
+            padding: 25px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+        }
+
+        /* 用户信息 */
+        .user-profile {
+            cursor: pointer;
+            padding: 5px 12px;
+            border-radius: 50px;
+            transition: background 0.2s;
+        }
+        .user-profile:hover { background: #f0f2f5; }
+
+        .storage-info {
+            margin-top: auto;
+            padding: 20px;
+            font-size: 0.85rem;
+        }
+    </style>
 </head>
 <body>
 
-<!-- 顶部导航 -->
-<nav class="navbar navbar-dark bg-primary px-4">
-    <a class="navbar-brand" href="#">☁️ 高校网盘系统</a>
-    <div class="d-flex text-white align-items-center">
-        <span class="me-3" id="navUsername">正在加载...</span>
-        <button onclick="logout()" class="btn btn-sm btn-light text-primary">退出</button>
+<!-- 1. 顶部导航 -->
+<nav class="navbar navbar-expand-lg navbar-light px-4 sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+            <i class="bi bi-cloud-check-fill fs-3"></i>
+            <span>HiJDK Cloud Drive</span>
+        </a>
+
+        <div class="d-flex align-items-center">
+            <div class="dropdown">
+                <div class="user-profile d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+                    <img src="https://ui-avatars.com/api/?name=User&background=0D6EFD&color=fff" class="rounded-circle" width="32" id="userAvatar">
+                    <span class="fw-bold" id="navUsername">加载中...</span>
+                    <i class="bi bi-chevron-down small"></i>
+                </div>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i> 个人中心</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="javascript:logout()"><i class="bi bi-box-arrow-right me-2"></i> 退出登录</a></li>
+                </ul>
+            </div>
+        </div>
     </div>
 </nav>
 
-<div class="container mt-5">
-    <div class="alert alert-success">
-        <h4>🎉 欢迎回来！</h4>
-        <p>你已经成功登录，这里是系统首页。</p>
-        <p>Role B/C/D 的功能将在这里展示。</p>
-    </div>
+<div class="wrapper">
+    <!-- 2. 侧边栏 -->
+    <aside class="sidebar">
+        <div class="nav-item">
+            <a href="javascript:void(0)" class="nav-link active" data-page="files">
+                <i class="bi bi-folder2-open fs-5"></i> 我的文件
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="javascript:void(0)" class="nav-link" data-page="shares">
+                <i class="bi bi-share fs-5"></i> 我的分享
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="javascript:void(0)" class="nav-link" data-page="recycle">
+                <i class="bi bi-trash3 fs-5"></i> 回收站
+            </a>
+        </div>
+
+        <!-- 容量条 (给 Role B/C 组员预留) -->
+        <div class="storage-info">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">存储空间</span>
+                <span id="storageText">0 / 10 GB</span>
+            </div>
+            <div class="progress" style="height: 6px;">
+                <div id="storageBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 3. 主内容区 -->
+    <main class="main-container">
+        <div class="content-card" id="main-content">
+            <!-- 默认显示内容骨架 -->
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-3 text-muted">内容加载中...</p>
+            </div>
+        </div>
+    </main>
 </div>
 
-<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<!-- 引入 Bootstrap JS (用于下拉菜单等) -->
+<script src="https://cdn.staticfile.org/bootstrap/5.2.3/js/bootstrap.bundle.min.js"></script>
+<script src="/js/jquery.min.js"></script>
+
 <script>
-    // 页面加载完成后，请求后端获取当前用户信息
     $(document).ready(function() {
-        $.ajax({
-            url: '/api/user/info', // 你的后端接口
-            type: 'GET',
-            success: function(res) {
-                if (res.code === 200) {
-                    $('#navUsername').text(res.data.username);
-                } else {
-                    alert("登录失效");
-                    location.href = '/login';
-                }
+        // 1. 获取用户信息
+        loadUserInfo();
+
+        // 2. 侧边栏切换逻辑
+        $('.nav-link').click(function() {
+            $('.nav-link').removeClass('active');
+            $(this).addClass('active');
+            const page = $(this).data('page');
+            switchPage(page);
+        });
+
+        // 3. 初始加载“我的文件”
+        switchPage('files');
+    });
+
+    // 获取并展示用户信息
+    function loadUserInfo() {
+        $.get('/api/user/info', function(res) {
+            if (res.code === 200) {
+                const user = res.data;
+                $('#navUsername').text(user.username);
+                // 更新容量条
+                const used = (user.usedSize / 1024 / 1024).toFixed(1); // MB
+                const total = (user.totalSize / 1024 / 1024 / 1024).toFixed(0); // GB
+                $('#storageText').text(`${used}MB / ${total}GB`);
+                const percent = (user.usedSize / user.totalSize) * 100;
+                $('#storageBar').css('width', percent + '%');
+            } else {
+                location.href = '/login';
             }
         });
-    });
+    }
+
+    // 页面内容切换引擎
+    function switchPage(page) {
+        const $content = $('#main-content');
+
+        // 此处为其他同学预留接入点
+        if (page === 'files') {
+            $content.html(`
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0">我的文件</h4>
+                    <button class="btn btn-primary btn-sm px-3"><i class="bi bi-upload me-1"></i> 上传文件</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>文件名</th>
+                                <th>大小</th>
+                                <th>修改日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-5">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    暂无文件，点击上方按钮开始上传
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `);
+        } else {
+            $content.html(`
+                <div class="text-center py-5">
+                    <i class="bi bi-tools fs-1 text-muted"></i>
+                    <h5 class="mt-3 text-muted">「${page}」模块正在由其他组员开发中...</h5>
+                </div>
+            `);
+        }
+    }
 
     // 退出登录
     function logout() {
-        $.post('/api/user/logout', function() {
-            location.href = '/login';
-        });
+        if(confirm("确定要退出系统吗？")) {
+            $.post('/api/user/logout', function() {
+                location.href = '/login';
+            });
+        }
     }
 </script>
 </body>

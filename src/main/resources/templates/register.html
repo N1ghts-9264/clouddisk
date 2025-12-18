@@ -1,55 +1,342 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>注册 - 高校网盘</title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - HiJDK Cloud Drive</title>
+    <!-- 完全复用登录页资源 -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.staticfile.org/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+
     <style>
-        body { background-color: #f5f7fa; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .card { width: 400px; border: none; }
+        /* ============================================================
+           直接搬运 login.html 的 CSS 变量与样式，确保 100% 一致
+           ============================================================ */
+        :root {
+            --brand-blue: #0b5ed7;
+            --brand-hover: #0a58ca;
+            --shadow-soft: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-image: url('/images/login-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        .bg-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(125deg, rgba(13, 110, 253, 0.35) 0%, rgba(0, 0, 0, 0.65) 100%);
+            z-index: 1;
+        }
+
+        /* 品牌 Logo 样式对齐 */
+        .brand-logo {
+            position: absolute;
+            top: 30px;
+            left: 45px;
+            color: white;
+            font-weight: 600;
+            font-size: 1.4rem;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+        .brand-logo:hover { color: rgba(255, 255, 255, 0.9); }
+        .brand-logo i { font-size: 1.6rem; }
+
+        .main-container {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 左侧宣传区样式对齐 */
+        .intro-section {
+            color: white;
+            padding-right: 60px;
+            text-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .intro-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            line-height: 1.15;
+            letter-spacing: -1px;
+        }
+        .intro-desc {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 35px;
+            font-weight: 400;
+            line-height: 1.6;
+        }
+        .feature-badges span {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-right: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* 注册卡片：尺寸、圆角、玻璃拟态完全对齐 login-card */
+        .login-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            border-radius: 20px;
+            padding: 45px 40px;
+            width: 100%;
+            max-width: 440px; /* 宽度对齐登录页 */
+            border-top: 1px solid rgba(255, 255, 255, 0.8);
+            border-left: 1px solid rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+            border-right: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: var(--shadow-soft);
+            /* 动画效果对齐 */
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .login-card:hover {
+            transform: translateY(-8px);
+        }
+
+        .card-title {
+            font-weight: 700;
+            color: #1a1f2c;
+            margin-bottom: 35px;
+            font-size: 1.75rem;
+            letter-spacing: -0.5px;
+        }
+
+        /* 表单输入框样式对齐 */
+        .form-control, .input-group-text {
+            background-color: rgba(255, 255, 255, 0.6);
+            border: 1px solid #e1e5eb;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        .form-control:focus {
+            background-color: #fff;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+            z-index: 3;
+        }
+        .input-group:focus-within .input-group-text {
+            border-color: var(--brand-blue);
+            color: var(--brand-blue);
+            background-color: #fff;
+        }
+
+        /* 验证码样式对齐 */
+        .captcha-row {
+            display: flex;
+            gap: 12px;
+            height: 50px;
+        }
+        .captcha-input { flex: 1; height: 100%; }
+        .captcha-img-box {
+            flex: 0 0 120px;
+            height: 100%;
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e1e5eb;
+            transition: opacity 0.2s;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .captcha-img-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* 按钮样式对齐 */
+        .btn-login {
+            background-color: var(--brand-blue);
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+            transition: all 0.3s;
+        }
+        .btn-login:hover {
+            background-color: var(--brand-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(13, 110, 253, 0.3);
+        }
+
+        .footer-link { margin-top: 25px; font-size: 0.95rem; }
+
+        @media (max-width: 991px) {
+            .intro-section { display: none; }
+            .login-card { max-width: 92%; margin: 0 auto; padding: 30px 25px; }
+        }
     </style>
 </head>
 <body>
 
-<div class="card p-4">
-    <h3 class="text-center mb-4">用户注册</h3>
-    <form id="regForm">
-        <div class="mb-3">
-            <label>用户名</label>
-            <input type="text" class="form-control" name="username" required>
+<div class="bg-overlay"></div>
+
+<a th:href="@{/login}" class="brand-logo">
+    <i class="bi bi-cloud-check-fill"></i>
+    <span>HiJDK Cloud Drive</span>
+</a>
+
+<div class="container-fluid main-container">
+    <div class="row w-100 align-items-center justify-content-center">
+
+        <!-- 左侧宣传语 (内容微调，样式完全对齐) -->
+        <div class="col-lg-7 d-none d-lg-block">
+            <div class="container intro-section ps-5">
+                <h1 class="intro-title">加入我们 · 开启云端<br>畅享智能存储新体验</h1>
+                <p class="intro-desc">只需几秒钟创建一个账号，<br>即可立即获得 10 GB 免费空间及高效分享功能。</p>
+                <div class="feature-badges">
+                    <span><i class="bi bi-person-plus"></i> 快速注册</span>
+                    <span><i class="bi bi-shield-check"></i> 安全保障</span>
+                    <span><i class="bi bi-hdd"></i> 永久空间</span>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            <label>密码</label>
-            <input type="password" class="form-control" name="password" required>
+
+        <!-- 右侧注册卡片 (结构与 login-card 保持一致) -->
+        <div class="col-lg-4 col-md-8 col-12">
+            <div class="login-card">
+                <h3 class="card-title text-center">账号注册</h3>
+
+                <form id="regForm">
+                    <!-- 用户名 -->
+                    <div class="mb-3 input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" class="form-control" name="username" placeholder="请输入用户名" required>
+                    </div>
+
+                    <!-- 密码 -->
+                    <div class="mb-3 input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                    </div>
+
+                    <!-- 确认密码 (注册页特有，但样式对齐) -->
+                    <div class="mb-3 input-group">
+                        <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                        <input type="password" class="form-control" id="rePassword" placeholder="请再次输入密码确认" required>
+                    </div>
+
+                    <!-- 验证码区域 (完全镜像登录页逻辑) -->
+                    <div class="mb-4 captcha-row">
+                        <input type="text" class="form-control captcha-input" name="captcha" placeholder="验证码" required autocomplete="off">
+                        <div class="captcha-img-box" title="点击刷新验证码">
+                            <img src="/api/user/captcha" id="captchaImg" alt="验证码">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-login" id="regBtn">
+                        <span id="btnText">立即注册</span>
+                        <div id="btnLoading" class="spinner-border spinner-border-sm text-light d-none" role="status"></div>
+                    </button>
+
+                    <div class="footer-link">
+                        已有账号？ <a th:href="@{/login}">立即登录 <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                </form>
+            </div>
         </div>
-        <button type="submit" class="btn btn-success w-100">立即注册</button>
-        <div class="text-center mt-3">
-            <a href="/login">已有账号？去登录</a>
-        </div>
-    </form>
+    </div>
 </div>
 
-<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="/js/jquery.min.js"></script>
 <script>
-    $('#regForm').submit(function(e) {
-        e.preventDefault();
-        var data = {
-            username: $('input[name="username"]').val(),
-            password: $('input[name="password"]').val()
-        };
+    $(document).ready(function() {
+        // ============================
+        // 1. 验证码点击刷新逻辑 (完全搬运登录页)
+        // ============================
+        $('#captchaImg').click(function() {
+            $(this).attr('src', '/api/user/captcha?t=' + new Date().getTime());
+        });
 
-        $.ajax({
-            url: '/api/user/register',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: function(res) {
-                if (res.code === 200) {
-                    alert("注册成功，快去登录吧！");
-                    location.href = '/login';
-                } else {
-                    alert(res.msg);
+        $('.captcha-img-box').click(function() {
+             if(event.target.id !== 'captchaImg') {
+                 $('#captchaImg').click();
+             }
+        });
+
+        // ============================
+        // 2. 注册提交逻辑 (保持交互反馈一致)
+        // ============================
+        $('#regForm').submit(function(e) {
+            e.preventDefault();
+
+            // 密码二次校验
+            if ($('#password').val() !== $('#rePassword').val()) {
+                alert("两次输入的密码不一致，请检查");
+                return;
+            }
+
+            let btn = $('#regBtn');
+            let btnText = $('#btnText');
+            let btnLoading = $('#btnLoading');
+
+            btn.prop('disabled', true);
+            btnText.text('注册中...');
+            btnLoading.removeClass('d-none');
+
+            var data = {
+                username: $('input[name="username"]').val(),
+                password: $('input[name="password"]').val()
+                // 备注：如果后端注册接口也需要校验验证码，可在此加入 captcha 字段
+            };
+
+            $.ajax({
+                url: '/api/user/register',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if (res.code === 200) {
+                        btn.removeClass('btn-primary').addClass('btn-success');
+                        btnText.text('注册成功');
+                        btnLoading.addClass('d-none');
+                        setTimeout(function() {
+                            alert("注册成功，请登录！");
+                            location.href = '/login';
+                        }, 500);
+                    } else {
+                        alert(res.msg || '注册失败');
+                        resetBtn();
+                        $('#captchaImg').click(); // 失败自动刷新验证码
+                    }
+                },
+                error: function(xhr) {
+                    alert('服务器连接失败');
+                    resetBtn();
                 }
+            });
+
+            function resetBtn() {
+                btn.prop('disabled', false);
+                btn.removeClass('btn-success').addClass('btn-primary');
+                btnText.text('立即注册');
+                btnLoading.addClass('d-none');
             }
         });
     });
