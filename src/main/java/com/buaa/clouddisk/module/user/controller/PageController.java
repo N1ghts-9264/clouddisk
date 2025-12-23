@@ -23,4 +23,10 @@ public class PageController {
     public String indexPage() {
         return "index"; // 对应 resources/templates/index.html
     }
+
+    // 跳转个人中心页
+    @GetMapping("/profile")
+    public String profilePage() {
+        return "profile"; // 对应 resources/templates/profile.html
+    }
 }

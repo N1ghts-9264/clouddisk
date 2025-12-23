@@ -10,4 +10,7 @@ public interface IUserService extends IService<User> {
     void register(UserRegisterDTO registerDTO);
     User login(UserLoginDTO loginDTO, HttpSession session);
     void logout(HttpSession session);
+    void updateNickname(String nickname, HttpSession session);
+    void changePassword(String oldPassword, String newPassword, HttpSession session);
+    boolean isUsernameTaken(String username);
 }

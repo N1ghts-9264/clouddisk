@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - HiJDK Cloud Drive</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.staticfile.org/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .navbar {
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: #0d6efd !important;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-profile {
+            cursor: pointer;
+            padding: 5px 12px;
+            border-radius: 50px;
+            transition: background 0.2s;
+        }
+        .user-profile:hover { background: #f0f2f5; }
+        .avatar-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        .page-container {
+            padding: 24px 16px;
+        }
+        .profile-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+            padding: 20px 20px;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .form-section {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+            padding: 20px 20px;
+            margin-bottom: 20px;
+        }
+        .btn-loading-spinner {
+            margin-left: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light px-4 sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/index">
+            <i class="bi bi-cloud-check-fill fs-3"></i>
+            <span>HiJDK Cloud Drive</span>
+        </a>
+
+        <div class="d-flex align-items-center">
+            <div class="dropdown">
+                <div class="user-profile d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+                    <div class="avatar-circle" id="navAvatar">U</div>
+                    <span class="fw-bold" id="navUsername">加载中...</span>
+                    <i class="bi bi-chevron-down small"></i>
+                </div>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    <li><a class="dropdown-item active" href="/profile"><i class="bi bi-person me-2"></i> 个人中心</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="javascript:logout()"><i class="bi bi-box-arrow-right me-2"></i> 退出登录</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="page-container container">
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="profile-card">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="avatar-circle me-3" id="profileAvatar">U</div>
+                    <div>
+                        <div class="fw-bold" id="infoNickname">-</div>
+                        <div class="text-muted small" id="infoUsername">用户名：-</div>
+                    </div>
+                </div>
+                <div class="text-muted small mb-1" id="infoCreateTime">注册时间：-</div>
+                <div class="text-muted small" id="infoStorage">存储：-</div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <!-- 顶部统一消息条 -->
+            <div id="profileMessage" class="alert d-none" role="alert"></div>
+
+            <!-- 修改昵称 -->
+            <div class="form-section">
+                <div class="section-title">修改昵称</div>
+                <form id="nicknameForm" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">新的昵称</label>
+                        <input type="text" class="form-control" id="inputNickname" placeholder="请输入新的昵称">
+                        <div class="invalid-feedback" id="nicknameError"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btnNickname">
+                        <span id="btnNicknameText">保存昵称</span>
+                        <div id="btnNicknameLoading" class="spinner-border spinner-border-sm text-light d-none btn-loading-spinner" role="status"></div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- 修改密码 -->
+            <div class="form-section">
+                <div class="section-title">修改密码</div>
+                <form id="passwordForm" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">原密码</label>
+                        <input type="password" class="form-control" id="inputOldPassword" placeholder="请输入原密码">
+                        <div class="invalid-feedback" id="oldPasswordError"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">新密码</label>
+                        <input type="password" class="form-control" id="inputNewPassword" placeholder="请输入新密码（6-32 位）">
+                        <div class="invalid-feedback" id="newPasswordError"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">确认新密码</label>
+                        <input type="password" class="form-control" id="inputConfirmPassword" placeholder="请再次输入新密码">
+                        <div class="invalid-feedback" id="confirmPasswordError"></div>
+                    </div>
+                    <button type="submit" class="btn btn-warning" id="btnPassword">
+                        <span id="btnPasswordText">修改密码</span>
+                        <div id="btnPasswordLoading" class="spinner-border spinner-border-sm text-light d-none btn-loading-spinner" role="status"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdn.staticfile.org/bootstrap/5.2.3/js/bootstrap.bundle.min.js"></script>
+<script src="/js/jquery.min.js"></script>
+<script>
+    $(document).ready(function () {
+        loadUserInfo();
+
+        $('#nicknameForm').on('submit', function (e) {
+            e.preventDefault();
+            clearFieldError('#inputNickname', '#nicknameError');
+            hideMessage();
+
+            var nickname = $.trim($('#inputNickname').val());
+            if (!nickname) {
+                showFieldError('#inputNickname', '#nicknameError', '昵称不能为空');
+                return;
+            }
+            if (nickname.length > 20) {
+                showFieldError('#inputNickname', '#nicknameError', '昵称长度不能超过 20 个字符');
+                return;
+            }
+
+            setButtonLoading('#btnNickname', '#btnNicknameText', '#btnNicknameLoading', true, '保存中...');
+            $.post('/api/user/nickname', {nickname: nickname})
+                .done(function (res) {
+                    if (res.code === 200) {
+                        showMessage('success', res.msg || '昵称修改成功');
+                        $('#infoNickname').text(nickname);
+                        $('#navUsername').text(nickname);
+                    } else {
+                        showMessage('danger', res.msg || '昵称修改失败');
+                    }
+                })
+                .fail(function () {
+                    showMessage('danger', '服务器连接失败，请稍后重试');
+                })
+                .always(function () {
+                    setButtonLoading('#btnNickname', '#btnNicknameText', '#btnNicknameLoading', false, '保存昵称');
+                });
+        });
+
+        $('#passwordForm').on('submit', function (e) {
+            e.preventDefault();
+            clearFieldError('#inputOldPassword', '#oldPasswordError');
+            clearFieldError('#inputNewPassword', '#newPasswordError');
+            clearFieldError('#inputConfirmPassword', '#confirmPasswordError');
+            hideMessage();
+
+            var oldPwd = $('#inputOldPassword').val();
+            var newPwd = $('#inputNewPassword').val();
+            var confirmPwd = $('#inputConfirmPassword').val();
+
+            if (!oldPwd) {
+                showFieldError('#inputOldPassword', '#oldPasswordError', '原密码不能为空');
+                return;
+            }
+            if (!newPwd) {
+                showFieldError('#inputNewPassword', '#newPasswordError', '新密码不能为空');
+                return;
+            }
+            if (newPwd.length < 6 || newPwd.length > 32) {
+                showFieldError('#inputNewPassword', '#newPasswordError', '新密码长度需在 6-32 位之间');
+                return;
+            }
+            if (newPwd !== confirmPwd) {
+                showFieldError('#inputConfirmPassword', '#confirmPasswordError', '两次输入的新密码不一致');
+                return;
+            }
+
+            setButtonLoading('#btnPassword', '#btnPasswordText', '#btnPasswordLoading', true, '提交中...');
+            $.post('/api/user/password', {
+                oldPassword: oldPwd,
+                newPassword: newPwd
+            }).done(function (res) {
+                if (res.code === 200) {
+                    showMessage('success', res.msg || '密码修改成功，请重新登录');
+                    setTimeout(function () {
+                        window.location.href = '/login';
+                    }, 1500);
+                } else {
+                    showMessage('danger', res.msg || '密码修改失败');
+                }
+            }).fail(function () {
+                showMessage('danger', '服务器连接失败，请稍后重试');
+            }).always(function () {
+                setButtonLoading('#btnPassword', '#btnPasswordText', '#btnPasswordLoading', false, '修改密码');
+            });
+        });
+
+        // 实时校验：新密码长度 & 两次密码一致
+        $('#inputNewPassword').on('input', function () {
+            var newPwd = $(this).val();
+            var confirmPwd = $('#inputConfirmPassword').val();
+
+            clearFieldError('#inputNewPassword', '#newPasswordError');
+            clearFieldError('#inputConfirmPassword', '#confirmPasswordError');
+
+            if (!newPwd) {
+                return; // 不输就不提示，避免一开始就红
+            }
+            if (newPwd.length < 6 || newPwd.length > 32) {
+                showFieldError('#inputNewPassword', '#newPasswordError', '新密码长度需在 6-32 位之间');
+            } else if (confirmPwd && newPwd !== confirmPwd) {
+                showFieldError('#inputConfirmPassword', '#confirmPasswordError', '两次输入的新密码不一致');
+            }
+        });
+
+        $('#inputConfirmPassword').on('input', function () {
+            var newPwd = $('#inputNewPassword').val();
+            var confirmPwd = $(this).val();
+
+            clearFieldError('#inputConfirmPassword', '#confirmPasswordError');
+            if (!confirmPwd) {
+                return;
+            }
+            if (newPwd && newPwd !== confirmPwd) {
+                showFieldError('#inputConfirmPassword', '#confirmPasswordError', '两次输入的新密码不一致');
+            }
+        });
+    });
+
+    function loadUserInfo() {
+        $.get('/api/user/info', function (res) {
+            if (res.code === 200) {
+                var user = res.data;
+                var displayName = user.nickname || user.username || '用户';
+                $('#navUsername').text(displayName);
+                $('#infoNickname').text(displayName);
+                $('#infoUsername').text('用户名：' + (user.username || '-'));
+                if (user.createTime) {
+                    $('#infoCreateTime').text('注册时间：' + user.createTime.replace('T', ' '));
+                }
+                if (user.totalSize != null && user.usedSize != null) {
+                    var used = (user.usedSize / 1024 / 1024).toFixed(1);
+                    var total = (user.totalSize / 1024 / 1024 / 1024).toFixed(0);
+                    $('#infoStorage').text('存储：' + used + 'MB / ' + total + 'GB');
+                }
+
+                $('#inputNickname').val(displayName);
+
+                var color = calcAvatarColor(displayName);
+                var first = displayName.charAt(0).toUpperCase();
+                $('#navAvatar').css('background-color', color).text(first);
+                $('#profileAvatar').css('background-color', color).text(first);
+            } else {
+                window.location.href = '/login';
+            }
+        }).fail(function () {
+            window.location.href = '/login';
+        });
+    }
+
+    function calcAvatarColor(name) {
+        var colors = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#fd7e14', '#198754', '#20c997'];
+        var hash = 0;
+        for (var i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        var index = Math.abs(hash) % colors.length;
+        return colors[index];
+    }
+
+    function showMessage(type, text) {
+        var $msg = $('#profileMessage');
+        $msg.removeClass('d-none alert-success alert-danger alert-warning');
+        if (type === 'success') {
+            $msg.addClass('alert-success');
+        } else if (type === 'warning') {
+            $msg.addClass('alert-warning');
+        } else {
+            $msg.addClass('alert-danger');
+        }
+        $msg.text(text);
+    }
+
+    function hideMessage() {
+        $('#profileMessage').addClass('d-none');
+    }
+
+    function showFieldError(inputSelector, errorSelector, message) {
+        $(inputSelector).addClass('is-invalid');
+        $(errorSelector).text(message);
+    }
+
+    function clearFieldError(inputSelector, errorSelector) {
+        $(inputSelector).removeClass('is-invalid');
+        $(errorSelector).text('');
+    }
+
+    function setButtonLoading(btnSelector, textSelector, loadingSelector, loading, textForState) {
+        var $btn = $(btnSelector);
+        var $text = $(textSelector);
+        var $loading = $(loadingSelector);
+        if (loading) {
+            $btn.prop('disabled', true);
+            if (textForState) {
+                $text.text(textForState); // 加载中文案
+            }
+            $loading.removeClass('d-none');
+        } else {
+            $btn.prop('disabled', false);
+            $loading.addClass('d-none');
+            if (textForState) {
+                $text.text(textForState); // 恢复原始文案
+            }
+        }
+    }
+
+    function logout() {
+        var confirmModal = new bootstrap.Modal(document.getElementById('logoutModal'));
+        confirmModal.show();
+    }
+</script>
+
+<!-- 退出登录确认模态框（为后续统一交互预留，可现在先简单使用） -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">确认退出</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                确定要退出当前账号吗？
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmLogoutBtn">退出登录</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $('#confirmLogoutBtn').on('click', function () {
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('退出中...');
+        $.post('/api/user/logout', function () {
+            window.location.href = '/login';
+        }).fail(function () {
+            $btn.prop('disabled', false).text('退出登录');
+        });
+    });
+</script>
+
+</body>
+</html>

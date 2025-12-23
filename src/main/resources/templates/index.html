@@ -90,6 +90,17 @@
             transition: background 0.2s;
         }
         .user-profile:hover { background: #f0f2f5; }
+        .avatar-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.9rem;
+        }
 
         .storage-info {
             margin-top: auto;
@@ -103,7 +114,7 @@
 <!-- 1. 顶部导航 -->
 <nav class="navbar navbar-expand-lg navbar-light px-4 sticky-top">
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">
+        <a class="navbar-brand" href="/index">
             <i class="bi bi-cloud-check-fill fs-3"></i>
             <span>HiJDK Cloud Drive</span>
         </a>
@@ -111,12 +122,12 @@
         <div class="d-flex align-items-center">
             <div class="dropdown">
                 <div class="user-profile d-flex align-items-center gap-2" data-bs-toggle="dropdown">
-                    <img src="https://ui-avatars.com/api/?name=User&background=0D6EFD&color=fff" class="rounded-circle" width="32" id="userAvatar">
+                    <div class="avatar-circle" id="userAvatar">U</div>
                     <span class="fw-bold" id="navUsername">加载中...</span>
                     <i class="bi bi-chevron-down small"></i>
                 </div>
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                    <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i> 个人中心</a></li>
+                    <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i> 个人中心</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger" href="javascript:logout()"><i class="bi bi-box-arrow-right me-2"></i> 退出登录</a></li>
                 </ul>
@@ -194,17 +205,33 @@
         $.get('/api/user/info', function(res) {
             if (res.code === 200) {
                 const user = res.data;
-                $('#navUsername').text(user.username);
+                const displayName = user.nickname || user.username || '用户';
+                $('#navUsername').text(displayName);
                 // 更新容量条
                 const used = (user.usedSize / 1024 / 1024).toFixed(1); // MB
                 const total = (user.totalSize / 1024 / 1024 / 1024).toFixed(0); // GB
                 $('#storageText').text(`${used}MB / ${total}GB`);
                 const percent = (user.usedSize / user.totalSize) * 100;
                 $('#storageBar').css('width', percent + '%');
+
+                // 设置首字母头像
+                const color = calcAvatarColor(displayName);
+                const first = displayName.charAt(0).toUpperCase();
+                $('#userAvatar').css('background-color', color).text(first);
             } else {
                 location.href = '/login';
             }
         });
+    }
+
+    function calcAvatarColor(name) {
+        const colors = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#fd7e14', '#198754', '#20c997'];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % colors.length;
+        return colors[index];
     }
 
     // 页面内容切换引擎
@@ -251,12 +278,41 @@
 
     // 退出登录
     function logout() {
-        if(confirm("确定要退出系统吗？")) {
-            $.post('/api/user/logout', function() {
-                location.href = '/login';
-            });
-        }
+        var confirmModal = new bootstrap.Modal(document.getElementById('logoutModal'));
+        confirmModal.show();
     }
 </script>
+
+<!-- 退出登录确认模态框：与 profile.html 保持一致交互 -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">确认退出</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                确定要退出当前账号吗？
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmLogoutBtn">退出登录</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $('#confirmLogoutBtn').on('click', function () {
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('退出中...');
+        $.post('/api/user/logout', function () {
+            window.location.href = '/login';
+        }).fail(function () {
+            $btn.prop('disabled', false).text('退出登录');
+        });
+    });
+</script>
+
 </body>
 </html>

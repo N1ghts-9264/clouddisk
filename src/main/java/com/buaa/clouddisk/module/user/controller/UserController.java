@@ -8,6 +8,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 import com.buaa.clouddisk.common.result.Result;
+import com.buaa.clouddisk.common.result.ResultCode;
 import com.buaa.clouddisk.common.util.UserContext;
 import com.buaa.clouddisk.module.user.dto.UserLoginDTO;
 import com.buaa.clouddisk.module.user.dto.UserRegisterDTO;
@@ -75,6 +76,46 @@ public class UserController {
     public Result<String> logout(HttpSession session) {
         userService.logout(session);
         return Result.success("退出成功");
+    }
+
+    /**
+     * 修改昵称
+     */
+    @PostMapping("/nickname")
+    public Result<String> updateNickname(@RequestParam("nickname") String nickname, HttpSession session) {
+        try {
+            userService.updateNickname(nickname, session);
+            return Result.success("昵称修改成功");
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 修改密码
+     */
+    @PostMapping("/password")
+    public Result<String> changePassword(@RequestParam("oldPassword") String oldPassword,
+                                         @RequestParam("newPassword") String newPassword,
+                                         HttpSession session) {
+        try {
+            userService.changePassword(oldPassword, newPassword, session);
+            return Result.success("密码修改成功，请重新登录");
+        } catch (RuntimeException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 注册用户名实时校验
+     */
+    @GetMapping("/check-username")
+    public Result<Boolean> checkUsername(@RequestParam("username") String username) {
+        if (username == null || username.trim().isEmpty()) {
+            return Result.error(ResultCode.PARAM_ERROR.code, "用户名不能为空");
+        }
+        boolean taken = userService.isUsernameTaken(username.trim());
+        return Result.success(taken);
     }
 
     /**

@@ -224,22 +224,40 @@
                 <h3 class="card-title text-center">账号注册</h3>
 
                 <form id="regForm">
+                    <!-- 顶部统一消息条，用于显示注册成功/失败等提示 -->
+                    <div id="registerMessage" class="alert d-none" role="alert"></div>
+
                     <!-- 用户名 -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" placeholder="请输入用户名" required autocomplete="off">
+                        </div>
+                        <div class="mt-1 small" id="usernameTip"></div>
+                    </div>
+
+                    <!-- 昵称（可选，可重复） -->
                     <div class="mb-3 input-group">
-                        <span class="input-group-text"><i class="bi bi-person"></i></span>
-                        <input type="text" class="form-control" name="username" placeholder="请输入用户名" required>
+                        <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                        <input type="text" class="form-control" id="nickname" name="nickname" placeholder="请输入昵称（可选，最多 20 个字符）" autocomplete="off">
                     </div>
 
                     <!-- 密码 -->
-                    <div class="mb-3 input-group">
-                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="请输入密码" required>
+                        </div>
+                        <div class="invalid-feedback" id="passwordError"></div>
                     </div>
 
                     <!-- 确认密码 (注册页特有，但样式对齐) -->
-                    <div class="mb-3 input-group">
-                        <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
-                        <input type="password" class="form-control" id="rePassword" placeholder="请再次输入密码确认" required>
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                            <input type="password" class="form-control" id="rePassword" placeholder="请再次输入密码确认" required>
+                        </div>
+                        <div class="invalid-feedback" id="rePasswordError"></div>
                     </div>
 
                     <!-- 验证码区域 (完全镜像登录页逻辑) -->
@@ -281,14 +299,222 @@
         });
 
         // ============================
-        // 2. 注册提交逻辑 (保持交互反馈一致)
+        // 2. 用户名实时校验
+        // ============================
+        let usernameCheckTimer = null;
+        let usernameValid = false;      // true = 可用
+        let usernameChecking = false;   // true = 正在请求后端
+        const $usernameInput = $('#username');
+        const $usernameTip = $('#usernameTip');
+
+        function updateUsernameStateEmpty() {
+            usernameValid = false;
+            usernameChecking = false;
+            $usernameInput.removeClass('is-valid is-invalid');
+            $usernameTip.text('').removeClass('text-success text-danger text-warning text-muted');
+        }
+
+        function setUsernameChecking() {
+            usernameValid = false;
+            usernameChecking = true;
+            $usernameInput.removeClass('is-valid is-invalid');
+            $usernameTip.text('用户名校验中...').removeClass('text-success text-danger').addClass('text-warning');
+        }
+
+        function setUsernameTaken() {
+            usernameValid = false;
+            usernameChecking = false;
+            $usernameInput.removeClass('is-valid').addClass('is-invalid');
+            $usernameTip.text('该用户名已被注册').removeClass('text-success text-warning text-muted').addClass('text-danger');
+        }
+
+        function setUsernameAvailable() {
+            usernameValid = true;
+            usernameChecking = false;
+            $usernameInput.removeClass('is-invalid').addClass('is-valid');
+            $usernameTip.text('用户名可用').removeClass('text-danger text-warning text-muted').addClass('text-success');
+        }
+
+        function setUsernameFormatInvalid(message) {
+            usernameValid = false;
+            usernameChecking = false;
+            $usernameInput.removeClass('is-valid').addClass('is-invalid');
+            $usernameTip.text(message).removeClass('text-success text-warning text-muted').addClass('text-danger');
+        }
+
+        function validateUsernameFormat(value) {
+            const val = $.trim(value);
+            if (!val) {
+                updateUsernameStateEmpty();
+                return false;
+            }
+            if (val.length < 3) {
+                setUsernameFormatInvalid('用户名至少 3 个字符');
+                return false;
+            }
+            return true;
+        }
+
+        $usernameInput.on('input', function() {
+            const current = $(this).val();
+            // 每次输入先清除之前的定时器
+            if (usernameCheckTimer) {
+                clearTimeout(usernameCheckTimer);
+                usernameCheckTimer = null;
+            }
+
+            if (!validateUsernameFormat(current)) {
+                return;
+            }
+
+            // 通过基础格式校验后，开始防抖异步校验
+            setUsernameChecking();
+            const valueForRequest = $.trim(current);
+            usernameCheckTimer = setTimeout(function() {
+                $.get('/api/user/check-username', {username: valueForRequest}, function(res) {
+                    // 若用户此时已改成别的内容，则忽略本次结果
+                    const nowVal = $.trim($usernameInput.val());
+                    if (nowVal !== valueForRequest) {
+                        return;
+                    }
+                    if (res.code === 200) {
+                        if (res.data === true) {
+                            setUsernameTaken();
+                        } else {
+                            setUsernameAvailable();
+                        }
+                    } else {
+                        usernameValid = false;
+                        usernameChecking = false;
+                        $usernameInput.removeClass('is-valid').addClass('is-invalid');
+                        $usernameTip.text(res.msg || '用户名校验失败，请稍后重试').removeClass('text-success').addClass('text-danger');
+                    }
+                }).fail(function() {
+                    usernameValid = false;
+                    usernameChecking = false;
+                    $usernameInput.removeClass('is-valid').addClass('is-invalid');
+                    $usernameTip.text('用户名校验失败，请稍后重试').removeClass('text-success').addClass('text-danger');
+                });
+            }, 400); // 400ms 防抖
+        });
+
+        // ============================
+        // 3. 密码 & 确认密码实时校验
+        // ============================
+        const $passwordInput = $('#password');
+        const $rePasswordInput = $('#rePassword');
+        const $passwordError = $('#passwordError');
+        const $rePasswordError = $('#rePasswordError');
+
+        function clearPwdError() {
+            $passwordInput.removeClass('is-invalid');
+            $rePasswordInput.removeClass('is-invalid');
+            $passwordError.text('').removeClass('d-block');
+            $rePasswordError.text('').removeClass('d-block');
+        }
+
+        function showPasswordError(message) {
+            $passwordInput.addClass('is-invalid');
+            $passwordError.text(message).addClass('d-block');
+        }
+
+        function showRePasswordError(message) {
+            $rePasswordInput.addClass('is-invalid');
+            $rePasswordError.text(message).addClass('d-block');
+        }
+
+        function showRegisterMessage(type, text) {
+            var $msg = $('#registerMessage');
+            $msg.removeClass('d-none alert-success alert-danger alert-warning');
+            if (type === 'success') {
+                $msg.addClass('alert-success');
+            } else if (type === 'warning') {
+                $msg.addClass('alert-warning');
+            } else {
+                $msg.addClass('alert-danger');
+            }
+            $msg.text(text);
+        }
+
+        $passwordInput.on('input', function () {
+            clearPwdError();
+            const pwd = $passwordInput.val();
+            const repwd = $rePasswordInput.val();
+
+            if (!pwd) {
+                return; // 不输入不提示
+            }
+            if (pwd.length < 6 || pwd.length > 32) {
+                showPasswordError('密码长度需在 6-32 位之间');
+                return;
+            }
+            if (repwd && pwd !== repwd) {
+                showRePasswordError('两次输入的密码不一致');
+            }
+        });
+
+        $rePasswordInput.on('input', function () {
+            clearPwdError();
+            const pwd = $passwordInput.val();
+            const repwd = $rePasswordInput.val();
+
+            if (!repwd) {
+                return;
+            }
+            if (pwd && pwd !== repwd) {
+                showRePasswordError('两次输入的密码不一致');
+            }
+        });
+
+        // ============================
+        // 4. 注册提交逻辑 (保持交互反馈一致)
         // ============================
         $('#regForm').submit(function(e) {
             e.preventDefault();
 
-            // 密码二次校验
-            if ($('#password').val() !== $('#rePassword').val()) {
-                alert("两次输入的密码不一致，请检查");
+            // 先做一次基础格式校验，确保提示明确
+            const usernameVal = $usernameInput.val();
+            if (!validateUsernameFormat(usernameVal)) {
+                return;
+            }
+            if (usernameChecking) {
+                $usernameTip.text('用户名校验中，请稍后...').removeClass('text-success').addClass('text-warning');
+                return;
+            }
+            if (!usernameValid) {
+                // 用户名不可用或尚未通过校验
+                if (!$usernameTip.text()) {
+                    setUsernameFormatInvalid('请输入一个可用的用户名');
+                }
+                return;
+            }
+
+            clearPwdError();
+
+            const pwd = $passwordInput.val();
+            const repwd = $rePasswordInput.val();
+
+            if (!pwd) {
+                showPasswordError('密码不能为空');
+                return;
+            }
+            if (pwd.length < 6 || pwd.length > 32) {
+                showPasswordError('密码长度需在 6-32 位之间');
+                return;
+            }
+            if (!repwd) {
+                showRePasswordError('请再次输入密码确认');
+                return;
+            }
+            if (pwd !== repwd) {
+                showRePasswordError('两次输入的密码不一致');
+                return;
+            }
+
+            // 昵称简单长度校验（前端提示用，可为空）
+            const nicknameVal = $.trim($('#nickname').val());
+            if (nicknameVal && nicknameVal.length > 20) {
+                showRegisterMessage('danger', '昵称长度不能超过 20 个字符');
                 return;
             }
 
@@ -302,7 +528,8 @@
 
             var data = {
                 username: $('input[name="username"]').val(),
-                password: $('input[name="password"]').val()
+                password: $('input[name="password"]').val(),
+                nickname: nicknameVal
                 // 备注：如果后端注册接口也需要校验验证码，可在此加入 captcha 字段
             };
 
@@ -316,18 +543,18 @@
                         btn.removeClass('btn-primary').addClass('btn-success');
                         btnText.text('注册成功');
                         btnLoading.addClass('d-none');
+                        showRegisterMessage('success', res.msg || '注册成功，请登录！');
                         setTimeout(function() {
-                            alert("注册成功，请登录！");
                             location.href = '/login';
-                        }, 500);
+                        }, 800);
                     } else {
-                        alert(res.msg || '注册失败');
+                        showRegisterMessage('danger', res.msg || '注册失败');
                         resetBtn();
                         $('#captchaImg').click(); // 失败自动刷新验证码
                     }
                 },
                 error: function(xhr) {
-                    alert('服务器连接失败');
+                    showRegisterMessage('danger', '服务器连接失败');
                     resetBtn();
                 }
             });

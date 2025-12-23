@@ -230,7 +230,7 @@
 <div class="bg-overlay"></div>
 
 <!-- 左上角 Logo -->
-<a href="#" class="brand-logo">
+<a href="/login" class="brand-logo">
     <i class="bi bi-cloud-check-fill"></i>
     <span>HiJDK Cloud Drive</span> <!-- 包裹 span 方便控制 -->
 </a>
@@ -256,6 +256,9 @@
         <div class="col-lg-4 col-md-8 col-12">
             <div class="login-card">
                 <h3 class="card-title text-center">账号登录</h3>
+
+                <!-- 顶部统一消息条，用于显示登录成功/失败等提示 -->
+                <div id="loginMessage" class="alert d-none" role="alert"></div>
 
                 <form id="loginForm">
                     <div class="mb-3 input-group">
@@ -322,6 +325,8 @@
         });
         $('#loginForm').submit(function(e) {
             e.preventDefault();
+            hideMessage();
+
             let btn = $('#loginBtn');
             let btnText = $('#btnText');
             let btnLoading = $('#btnLoading');
@@ -346,9 +351,10 @@
                         btn.removeClass('btn-primary').addClass('btn-success');
                         btnText.text('登录成功');
                         btnLoading.addClass('d-none');
+                        showMessage('success', '登录成功，正在跳转...');
                         setTimeout(function() { location.href = '/index'; }, 500);
                     } else {
-                        alert(res.msg || '登录失败');
+                        showMessage('danger', res.msg || '登录失败');
                         resetBtn();
                         $('#captchaImg').click();
                         $('input[name="captcha"]').val('');
@@ -357,7 +363,7 @@
                 error: function(xhr) {
                     let errorMsg = '服务器连接失败';
                     if(xhr.responseJSON && xhr.responseJSON.msg) errorMsg = xhr.responseJSON.msg;
-                    alert(errorMsg);
+                    showMessage('danger', errorMsg);
                     resetBtn();
                 }
             });
@@ -369,6 +375,23 @@
                 btnLoading.addClass('d-none');
             }
         });
+
+        function showMessage(type, text) {
+            var $msg = $('#loginMessage');
+            $msg.removeClass('d-none alert-success alert-danger alert-warning');
+            if (type === 'success') {
+                $msg.addClass('alert-success');
+            } else if (type === 'warning') {
+                $msg.addClass('alert-warning');
+            } else {
+                $msg.addClass('alert-danger');
+            }
+            $msg.text(text);
+        }
+
+        function hideMessage() {
+            $('#loginMessage').addClass('d-none');
+        }
     });
 </script>
 </body>
