@@ -12,6 +12,7 @@ public class PageController {
         return "login"; // 对应 resources/templates/login.html
     }
 
+
     // 跳转注册页
     @GetMapping("/register")
     public String registerPage() {

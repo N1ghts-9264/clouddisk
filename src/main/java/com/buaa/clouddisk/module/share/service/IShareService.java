@@ -1,4 +1,18 @@
 package com.buaa.clouddisk.module.share.service;
 
-public class IShareService {
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.buaa.clouddisk.module.share.dto.ShareCheckDTO;
+import com.buaa.clouddisk.module.share.dto.ShareCreateDTO;
+import com.buaa.clouddisk.module.share.dto.ShareInfoVO;
+import com.buaa.clouddisk.module.share.entity.Share;
+
+public interface IShareService extends IService<Share> {
+    // 创建分享
+    Share createShare(ShareCreateDTO createDTO);
+
+    // 获取分享基础信息（无需提取码，用于展示文件名等）
+    ShareInfoVO getShareInfo(Long shareId);
+
+    // 校验提取码
+    String checkShareCode(ShareCheckDTO checkDTO);
 }
