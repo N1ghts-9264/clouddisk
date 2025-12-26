@@ -449,8 +449,8 @@
                 '</div>' +
                 '<div class="btn-group btn-group-sm">' +
                 '<button class="btn btn-outline-primary btn-copy-link">复制链接</button>' +
-                '<button class="btn btn-outline-success btn-view-info">查看</button>' +
-                (s.fileId ? '<button class="btn btn-outline-secondary btn-download">下载</button>' : '') +
+                /* 去掉“查看”按钮，保留“在线浏览”与新增“下载” */
+                (s.fileId ? '<button class="btn btn-outline-secondary btn-download">在线浏览</button><button class="btn btn-outline-danger btn-save-download">下载</button>' : '') +
                 '<button class="btn btn-outline-warning btn-check-code">校验提取码</button>' +
                 '</div>' +
                 '</div>'
@@ -462,19 +462,45 @@
                 navigator.clipboard && navigator.clipboard.writeText(url).then(function () { alert('已复制链接：' + url); }).catch(function () { prompt('复制分享链接：', url); });
             });
 
-            item.find('.btn-view-info').on('click', function () {
-                $.get('/api/share/info/' + s.shareId, function (res) {
-                    if (res.code === 200 && res.data) {
-                        alert('文件名：' + res.data.filename + '\n大小：' + res.data.fileSize + ' 字节\n分享者：' + res.data.shareUser + '\n已过期：' + (res.data.expired ? '是' : '否'));
-                    } else {
-                        alert('获取信息失败：' + res.msg);
-                    }
-                }).fail(function (xhr) { alert('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); });
-            });
+            // 原“查看”按钮已移除
 
+            // 在线浏览（保留原来的打开新窗口行为）
             item.find('.btn-download').on('click', function () {
                 if (!s.fileId) return alert('无效的 fileId');
                 window.open('/api/file/download/' + s.fileId, '_blank');
+            });
+
+            // 新增：单文件直接下载（使用 fetch + blob 强制下载，避免预览）
+            item.find('.btn-save-download').on('click', function () {
+                if (!s.fileId) return alert('无效的 fileId');
+                const url = '/api/file/download/' + s.fileId;
+                fetch(url, { method: 'GET' })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('服务器返回 ' + res.status);
+                        const disposition = res.headers.get('Content-Disposition') || '';
+                        let filename = s.filename || ('file_' + s.fileId);
+                        const m = /filename\*?=([^;]+)/i.exec(disposition);
+                        if (m) {
+                            // 处理 filename* 或 filename 的情况
+                            let raw = m[1].trim();
+                            // 去除前缀如 UTF-8''xxx 或 双引号
+                            raw = raw.replace(/^UTF-8''/, '').replace(/^"|"$/g, '');
+                            try { filename = decodeURIComponent(raw); } catch (e) { filename = raw; }
+                        }
+                        return res.blob().then(function (blob) { return { blob: blob, filename: filename }; });
+                    })
+                    .then(function (obj) {
+                        const blobUrl = URL.createObjectURL(obj.blob);
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = obj.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
+                    })
+                    .catch(function (err) { alert('下载失败：' + err.message); });
+
             });
 
             item.find('.btn-check-code').on('click', function () {
