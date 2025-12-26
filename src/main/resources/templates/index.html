@@ -266,6 +266,108 @@
                     </table>
                 </div>
             `);
+
+        } else if (page === 'shares') {
+            // 我的分享页面：使用后端已实现的接口完成创建与校验，并在本次会话中缓存已创建的分享列表
+            $content.html(`
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0">我的分享</h4>
+                    <div>
+                        <button id="btnAddById" class="btn btn-outline-secondary btn-sm me-2">添加分享ID</button>
+                        <button id="btnRefreshShares" class="btn btn-primary btn-sm">刷新列表</button>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">文件 ID</label>
+                        <input type="number" id="shareFileId" class="form-control" placeholder="输入要分享的 fileId">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">有效期 (天)</label>
+                        <select id="shareValidDays" class="form-control">
+                            <option value="7">7天</option>
+                            <option value="30">30天</option>
+                            <option value="0">永久有效</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button id="btnCreateShare" class="btn btn-success w-100">生成分享</button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <h6 class="fw-bold">分享列表</h6>
+                    <div id="sharesList" class="list-group">
+                        <div class="list-group-item text-center text-muted py-4">尚无分享，或点击“刷新列表”加载本会话创建的分享</div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <small class="text-muted">说明：后端公开接口 `/api/share/info/{shareId}` 可用于查看任意分享信息；若需展示历史所有分享，请让后端开放分享列表接口。</small>
+                </div>
+            `);
+
+            // 事件绑定
+            $('#btnCreateShare').on('click', function () {
+                const fileId = parseInt($('#shareFileId').val());
+                const validDays = parseInt($('#shareValidDays').val());
+                if (!fileId) return alert('请输入有效的文件 ID');
+                $.ajax({
+                    url: '/api/share/create',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ fileId: fileId, validDays: validDays }),
+                    success: function (res) {
+                        if (res.code === 200 && res.data) {
+                            const share = {
+                                shareId: res.data.shareId,
+                                code: res.data.code,
+                                fileId: fileId,
+                                expireTime: res.data.expireTime || null
+                            };
+                            addShareToStore(share);
+                            renderShareList();
+                            alert('分享创建成功，ID: ' + share.shareId + '，提取码: ' + share.code);
+                        } else {
+                            alert('创建失败：' + (res.msg || '未知错误'));
+                        }
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : '请求失败';
+                        alert('错误：' + msg);
+                    }
+                });
+            });
+
+            $('#btnRefreshShares').on('click', function () { renderShareList(); });
+
+            $('#btnAddById').on('click', function () {
+                const sid = prompt('请输入要添加的分享 ID：');
+                if (!sid) return;
+                // 尝试获取分享信息（接口公开）并加入列表
+                $.get('/api/share/info/' + sid, function (res) {
+                    if (res.code === 200 && res.data) {
+                        const share = {
+                            shareId: res.data.shareId || sid,
+                            fileId: res.data.fileId || null,
+                            filename: res.data.filename || '未知',
+                            fileSize: res.data.fileSize || 0,
+                            shareUser: res.data.shareUser || '',
+                            expired: res.data.expired || false
+                        };
+                        addShareToStore(share);
+                        renderShareList();
+                        alert('已添加分享 ID：' + share.shareId);
+                    } else {
+                        alert('无法获取分享信息：' + res.msg);
+                    }
+                }).fail(function (xhr) { alert('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); });
+            });
+
+            // 首次渲染
+            renderShareList();
+
         } else {
             $content.html(`
                 <div class="text-center py-5">
@@ -274,6 +376,106 @@
                 </div>
             `);
         }
+    }
+
+    // ===== 我的分享 页面辅助函数（仅在此处补充） =====
+    function getStoredShares() {
+        try {
+            return JSON.parse(sessionStorage.getItem('myShares') || '[]');
+        } catch (e) { return []; }
+    }
+
+    function saveStoredShares(list) {
+        sessionStorage.setItem('myShares', JSON.stringify(list || []));
+    }
+
+    function addShareToStore(share) {
+        const list = getStoredShares();
+        // 防重复（以 shareId 为准）
+        const exists = list.find(s => String(s.shareId) === String(share.shareId));
+        if (!exists) {
+            list.unshift(share);
+            saveStoredShares(list);
+        }
+    }
+
+    function renderShareList() {
+        const $list = $('#sharesList');
+        const list = getStoredShares();
+        if (!list || list.length === 0) {
+            $list.html('<div class="list-group-item text-center text-muted py-4">尚无分享，或点击“刷新列表”加载本会话创建的分享</div>');
+            return;
+        }
+        $list.empty();
+        list.forEach(function (s) {
+            const title = s.filename ? s.filename : ('文件ID: ' + (s.fileId || '-'));
+            const size = s.fileSize ? formatBytes(s.fileSize) : '';
+            const expired = s.expired ? '<span class="badge bg-danger ms-2">已过期</span>' : '';
+            const expireText = s.expireTime ? ('到期: ' + s.expireTime) : '永久有效';
+            const item = $(
+                '<div class="list-group-item d-flex justify-content-between align-items-center">' +
+                '<div>' +
+                '<div class="fw-bold">' + title + (s.shareUser ? (' <small class="text-muted">by ' + s.shareUser + '</small>') : '') + '</div>' +
+                '<div class="text-muted small">' + size + ' · 分享ID: <code>' + s.shareId + '</code> · ' + expireText + expired + '</div>' +
+                '</div>' +
+                '<div class="btn-group btn-group-sm">' +
+                '<button class="btn btn-outline-primary btn-copy-link">复制链接</button>' +
+                '<button class="btn btn-outline-success btn-view-info">查看</button>' +
+                (s.fileId ? '<button class="btn btn-outline-secondary btn-download">下载</button>' : '') +
+                '<button class="btn btn-outline-warning btn-check-code">校验提取码</button>' +
+                '</div>' +
+                '</div>'
+            );
+
+            // 绑定操作
+            item.find('.btn-copy-link').on('click', function () {
+                const url = window.location.origin + '/share/' + s.shareId;
+                navigator.clipboard && navigator.clipboard.writeText(url).then(function () { alert('已复制链接：' + url); }).catch(function () { prompt('复制分享链接：', url); });
+            });
+
+            item.find('.btn-view-info').on('click', function () {
+                $.get('/api/share/info/' + s.shareId, function (res) {
+                    if (res.code === 200 && res.data) {
+                        alert('文件名：' + res.data.filename + '\n大小：' + res.data.fileSize + ' 字节\n分享者：' + res.data.shareUser + '\n已过期：' + (res.data.expired ? '是' : '否'));
+                    } else {
+                        alert('获取信息失败：' + res.msg);
+                    }
+                }).fail(function (xhr) { alert('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); });
+            });
+
+            item.find('.btn-download').on('click', function () {
+                if (!s.fileId) return alert('无效的 fileId');
+                window.open('/api/file/download/' + s.fileId, '_blank');
+            });
+
+            item.find('.btn-check-code').on('click', function () {
+                const code = s.code || prompt('请输入该分享的提取码：');
+                if (!code) return;
+                $.ajax({
+                    url: '/api/share/check',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ shareId: s.shareId, code: code }),
+                    success: function (res) {
+                        if (res.code === 200) {
+                            alert('校验成功，临时 token：' + res.data);
+                        } else {
+                            alert('校验失败：' + res.msg);
+                        }
+                    },
+                    error: function (xhr) { alert('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); }
+                });
+            });
+
+            $list.append(item);
+        });
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes) return '';
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
     }
 
     // 退出登录
