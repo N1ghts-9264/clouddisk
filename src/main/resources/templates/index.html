@@ -272,7 +272,12 @@
             $content.html(`
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="fw-bold mb-0">我的分享</h4>
-                    <div>
+                    <div class="d-flex align-items-center">
+                        <div class="form-check form-check-inline me-2">
+                            <input class="form-check-input" type="checkbox" id="selectAllShares">
+                            <label class="form-check-label small text-muted" for="selectAllShares">全选</label>
+                        </div>
+                        <button id="btnBatchDownload" class="btn btn-outline-danger btn-sm me-2">批量打包</button>
                         <button id="btnAddById" class="btn btn-outline-secondary btn-sm me-2">添加分享ID</button>
                         <button id="btnRefreshShares" class="btn btn-primary btn-sm">刷新列表</button>
                     </div>
@@ -304,7 +309,7 @@
                 </div>
 
                 <div class="mt-3">
-                    <small class="text-muted">说明：后端公开接口 `/api/share/info/{shareId}` 可用于查看任意分享信息；若需展示历史所有分享，请让后端开放分享列表接口。</small>
+                    <small class="text-muted">说明：后端公开接口 <code>/api/share/info/{shareId}</code> 可用于查看任意分享信息；若需展示历史所有分享，请让后端开放分享列表接口。</small>
                 </div>
             `);
 
@@ -341,6 +346,25 @@
             });
 
             $('#btnRefreshShares').on('click', function () { renderShareList(); });
+
+            // 全选切换与批量下载
+            $('#selectAllShares').on('change', function () {
+                const checked = $(this).prop('checked');
+                $('.share-select').prop('checked', checked);
+            });
+
+            $('#btnBatchDownload').on('click', function () {
+                const ids = [];
+                $('.share-select:checked').each(function () {
+                    const fid = $(this).data('fileid');
+                    if (fid) ids.push(fid);
+                });
+                if (ids.length === 0) return alert('请选择至少一个包含 fileId 的分享项进行打包下载');
+                // 打包下载使用后端的 GET /api/file/download/batch?fileIds=1,2,3
+                const url = '/api/file/download/batch?fileIds=' + ids.join(',');
+                // 直接在新窗口中打开以触发浏览器下载
+                window.open(url, '_blank');
+            });
 
             $('#btnAddById').on('click', function () {
                 const sid = prompt('请输入要添加的分享 ID：');
@@ -401,6 +425,8 @@
 
     function renderShareList() {
         const $list = $('#sharesList');
+        // 渲染时重置全选状态
+        $('#selectAllShares').prop('checked', false);
         const list = getStoredShares();
         if (!list || list.length === 0) {
             $list.html('<div class="list-group-item text-center text-muted py-4">尚无分享，或点击“刷新列表”加载本会话创建的分享</div>');
@@ -414,9 +440,12 @@
             const expireText = s.expireTime ? ('到期: ' + s.expireTime) : '永久有效';
             const item = $(
                 '<div class="list-group-item d-flex justify-content-between align-items-center">' +
+                '<div class="d-flex align-items-center flex-grow-1">' +
+                (s.fileId ? ('<input type="checkbox" class="form-check-input me-3 share-select" data-fileid="' + s.fileId + '">') : ('<input type="checkbox" class="form-check-input me-3" disabled>')) +
                 '<div>' +
                 '<div class="fw-bold">' + title + (s.shareUser ? (' <small class="text-muted">by ' + s.shareUser + '</small>') : '') + '</div>' +
                 '<div class="text-muted small">' + size + ' · 分享ID: <code>' + s.shareId + '</code> · ' + expireText + expired + '</div>' +
+                '</div>' +
                 '</div>' +
                 '<div class="btn-group btn-group-sm">' +
                 '<button class="btn btn-outline-primary btn-copy-link">复制链接</button>' +
@@ -477,6 +506,13 @@
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
         return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
     }
+
+    // 确保侧边栏“我的分享”在任何情况下都能触发切换（事件委托，增强鲁棒性）
+    $(document).on('click', '.nav-link[data-page="shares"]', function () {
+        $('.nav-link').removeClass('active');
+        $(this).addClass('active');
+        switchPage('shares');
+    });
 
     // 退出登录
     function logout() {
