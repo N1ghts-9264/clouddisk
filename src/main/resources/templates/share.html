@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>访问分享 - HiJDK Cloud Drive</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.staticfile.org/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        .card { max-width: 900px; margin: 36px auto; }
+    </style>
+</head>
+<body>
+<div class="card shadow">
+    <div class="card-body">
+        <h4 class="card-title">分享访问</h4>
+        <p class="text-muted">请输入分享 ID 与提取码并点击“接收分享”以获取文件（访客视图，无需登录）。</p>
+
+        <div class="mb-3 row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">分享 ID</label>
+                <input type="number" id="visitShareId" class="form-control" placeholder="分享 ID 或直接访问 /share/{shareId}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">提取码</label>
+                <input type="text" id="visitShareCode" class="form-control" maxlength="8" placeholder="输入提取码（如果有）">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button id="btnReceiveShare" class="btn btn-primary w-100">接收分享</button>
+            </div>
+        </div>
+
+        <!-- 结果区域：仅在接收成功后显示文件信息和操作 -->
+        <div id="receiveResult" class="border rounded p-3 mb-3" style="background:#fff; display:none;">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 id="rr_filename" class="mb-1"></h5>
+                    <div class="text-muted small" id="rr_meta"></div>
+                </div>
+                <div class="text-end">
+                    <div id="rr_status" class="mb-2"></div>
+                    <div>
+                        <button id="rr_preview" class="btn btn-outline-secondary btn-sm me-2">在线浏览</button>
+                        <button id="rr_download" class="btn btn-danger btn-sm">下载</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="msgArea" style="min-height:28px;"></div>
+
+    </div>
+</div>
+
+<script src="/js/jquery.min.js"></script>
+<script>
+    // 如果访问以 /share/{id} 形式打开，本页会尝试从 URL 中读取 shareId
+    $(function () {
+        const path = window.location.pathname || '';
+        const match = path.match(/\/share\/(\d+)/);
+        if (match) {
+            $('#visitShareId').val(match[1]);
+        }
+
+        $('#btnReceiveShare').on('click', function () {
+            const sid = $('#visitShareId').val();
+            const code = $('#visitShareCode').val();
+            if (!sid) return alert('请输入分享 ID');
+            if (!code) return alert('请输入提取码');
+
+            $('#msgArea').html('<div class="text-muted">正在验证分享信息...</div>');
+            // 1. 获取分享信息
+            $.get('/api/share/info/' + sid, function (res) {
+                if (!(res && res.code === 200 && res.data)) {
+                    $('#msgArea').html('<div class="alert alert-danger p-2">获取分享信息失败：' + (res ? res.msg : '未知错误') + '</div>');
+                    return;
+                }
+                const d = res.data;
+                // 2. 校验提取码以获得临时 token
+                $('#msgArea').html('<div class="text-muted">正在校验提取码...</div>');
+                $.ajax({
+                    url: '/api/share/check',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ shareId: Number(sid), code: code }),
+                    success: function (res2) {
+                        if (!(res2 && res2.code === 200 && res2.data)) {
+                            $('#msgArea').html('<div class="alert alert-danger p-2">提取码校验失败：' + (res2 ? res2.msg : '未知错误') + '</div>');
+                            return;
+                        }
+                        const token = res2.data;
+                        // 成功：将收到的文件信息以最简 UI 显示，并把该接收记录保存到 sessionStorage（可在“我的分享”页看到）
+                        const rec = {
+                            shareId: d.shareId || sid,
+                            fileId: d.fileId,
+                            filename: d.filename || ('file_' + d.fileId),
+                            fileSize: d.fileSize || 0,
+                            shareUser: d.shareUser || '',
+                            token: token
+                        };
+                        // 保持与“已接收列表”一致的存储结构
+                        try {
+                            let arr = JSON.parse(sessionStorage.getItem('receivedShares') || '[]');
+                            const exists = arr.find(x => String(x.shareId) === String(rec.shareId));
+                            if (!exists) arr.unshift(rec); else arr = arr.map(x=> String(x.shareId)===String(rec.shareId)?rec:x);
+                            sessionStorage.setItem('receivedShares', JSON.stringify(arr));
+                        } catch (e) { console.warn(e); }
+
+                        // 显示结果区
+                        $('#rr_filename').text(rec.filename);
+                        $('#rr_meta').text('大小：' + rec.fileSize + ' 字节 · 分享者：' + rec.shareUser);
+                        $('#rr_status').html('<span class="badge bg-success">接收成功</span>');
+                        $('#receiveResult').show();
+                        $('#msgArea').html('<div class="alert alert-success p-2">接收成功：已将文件加入你的接收列表。</div>');
+
+                        // 绑定操作按钮
+                        $('#rr_preview').off('click').on('click', function () {
+                            if (!rec.fileId) return alert('无效的 fileId');
+                            let url = '/api/file/download/' + rec.fileId + '?token=' + encodeURIComponent(rec.token);
+                            window.open(url, '_blank');
+                        });
+
+                        $('#rr_download').off('click').on('click', function () {
+                            if (!rec.fileId) return alert('无效的 fileId');
+                            let url = '/api/file/download/' + rec.fileId + '?token=' + encodeURIComponent(rec.token);
+                            fetch(url).then(function (res) {
+                                if (!res.ok) throw new Error('服务器返回 ' + res.status);
+                                const disposition = res.headers.get('Content-Disposition') || '';
+                                let filename = rec.filename || ('file_' + rec.fileId);
+                                const m = /filename\*?=([^;]+)/i.exec(disposition);
+                                if (m) {
+                                    let raw = m[1].trim(); raw = raw.replace(/^UTF-8''/, '').replace(/^"|"$/g, '');
+                                    try { filename = decodeURIComponent(raw); } catch (e) { filename = raw; }
+                                }
+                                return res.blob().then(function (blob) { return { blob: blob, filename: filename }; });
+                            }).then(function (obj) {
+                                const blobUrl = URL.createObjectURL(obj.blob);
+                                const a = document.createElement('a'); a.href = blobUrl; a.download = obj.filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
+                            }).catch(function (err) { alert('下载失败：' + err.message); });
+                        });
+
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText;
+                        $('#msgArea').html('<div class="alert alert-danger p-2">提取码校验失败：' + msg + '</div>');
+                    }
+                });
+
+            }).fail(function (xhr) { $('#msgArea').html('<div class="alert alert-danger p-2">获取分享信息失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText) + '</div>'); });
+        });
+    });
+
+    function fetchShareInfo(shareId) {
+        $('#msgArea').empty();
+        $('#shareInfoArea').hide();
+        $.get('/api/share/info/' + shareId, function (res) {
+            if (res.code === 200 && res.data) {
+                const d = res.data;
+                $('#si_filename').text(d.filename);
+                $('#si_meta').text('大小：' + (d.fileSize || 0) + ' 字节 · 分享者：' + (d.shareUser || '匿名') + ' · 已过期：' + (d.expired ? '是' : '否'));
+                $('#shareInfoArea').show();
+                // 设置 data-fileid
+                $('#btnPreview').data('fileid', d.fileId);
+                $('#btnDownload').data('fileid', d.fileId).data('token', '');
+                // 根据文件类型决定是否启用预览（仅图片/视频）
+                // 这里我们尽量允许在线浏览（浏览器会根据 Content-Type 决定）
+                $('#btnPreview').prop('disabled', true);
+                // 下载按钮默认不可用，需校验提取码后启用
+                $('#btnDownload').prop('disabled', true);
+                // 清理可能存在的 token
+                $('#btnPreview').data('token', '');
+                $('#btnDownload').data('token', '');
+            } else {
+                $('#msgArea').html('<div class="alert alert-danger p-2">获取分享信息失败：' + res.msg + '</div>');
+            }
+        }).fail(function (xhr) { $('#msgArea').html('<div class="alert alert-danger p-2">获取失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText) + '</div>'); });
+    }
+
+    function enableDownload(token) {
+        $('#btnDownload').data('token', token).prop('disabled', false);
+        $('#msgArea').append('<div class="mt-2 small text-muted">现在可以使用“下载”或“在线浏览”。如果下载被阻止，可能需要使用提取码后再尝试或登录。</div>');
+    }
+</script>
+</body>
+</html>

@@ -30,4 +30,10 @@ public class PageController {
     public String profilePage() {
         return "profile"; // 对应 resources/templates/profile.html
     }
+
+    // 访客访问分享页（示例：/share/123）
+    @GetMapping("/share/{shareId}")
+    public String sharePage() {
+        return "share"; // 对应 resources/templates/share.html
+    }
 }

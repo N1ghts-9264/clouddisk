@@ -43,6 +43,12 @@ public class ShareController {
         return Result.success(shareService.getShareInfo(shareId));
     }
 
+    @GetMapping("/my")
+    public Result<java.util.List<ShareInfoVO>> myShares() {
+        // 返回当前登录用户的所有分享
+        return Result.success(shareService.listMyShares());
+    }
+
     /**
      * 校验提取码
      */
@@ -51,5 +57,14 @@ public class ShareController {
         // 校验通过返回 Token
         String token = shareService.checkShareCode(checkDTO);
         return Result.success(token);
+    }
+
+    /**
+     * 删除分享（仅允许分享创建者删除，软删除）
+     */
+    @DeleteMapping("/{shareId}")
+    public Result<?> deleteShare(@PathVariable Long shareId) {
+        shareService.deleteShare(shareId);
+        return Result.success(null);
     }
 }

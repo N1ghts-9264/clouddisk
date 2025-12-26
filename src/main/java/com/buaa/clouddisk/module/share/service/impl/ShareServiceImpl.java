@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -117,6 +119,27 @@ public class ShareServiceImpl extends ServiceImpl<ShareMapper, Share> implements
         return UUID.randomUUID().toString();
     }
 
+    @Override
+    public List<ShareInfoVO> listMyShares() {
+        Long userId = UserContext.getUserId();
+        LambdaQueryWrapper<Share> qw = new LambdaQueryWrapper<>();
+        qw.eq(Share::getUserId, userId).eq(Share::getStatus, 0).orderByDesc(Share::getCreateTime);
+        List<Share> shares = this.list(qw);
+        return shares.stream().map(share -> {
+            File file = fileMapper.selectById(share.getFileId());
+            User user = userMapper.selectById(share.getUserId());
+            ShareInfoVO vo = new ShareInfoVO();
+            vo.setShareId(share.getShareId());
+            vo.setFileId(share.getFileId());
+            vo.setFilename(file != null ? file.getFilename() : "未知文件");
+            vo.setFileSize(file != null ? file.getFileSize() : 0L);
+            vo.setShareUser(user != null ? user.getNickname() : "我");
+            boolean isExpired = share.getExpireTime() != null && LocalDateTime.now().isAfter(share.getExpireTime());
+            vo.setExpired(isExpired);
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
     // 辅助方法：生成随机码
     private String generateRandomCode(int length) {
         String str = "abcdefghjkmnpqrstuvwxyz23456789"; // 去掉容易混淆的 i,l,1,o,0
@@ -126,5 +149,20 @@ public class ShareServiceImpl extends ServiceImpl<ShareMapper, Share> implements
             sb.append(str.charAt(index));
         }
         return sb.toString();
+    }
+
+    @Override
+    public void deleteShare(Long shareId) {
+        Share share = this.getById(shareId);
+        if (share == null) {
+            throw new RuntimeException("分享不存在或已被删除");
+        }
+        Long userId = UserContext.getUserId();
+        if (!share.getUserId().equals(userId)) {
+            throw new RuntimeException("无权删除该分享");
+        }
+        // 软删除：标记 status 为 1
+        share.setStatus(1);
+        this.updateById(share);
     }
 }

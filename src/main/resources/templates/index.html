@@ -207,6 +207,8 @@
                 const user = res.data;
                 const displayName = user.nickname || user.username || '用户';
                 $('#navUsername').text(displayName);
+                // 记录当前用户名（用于比较分享归属）
+                window.currentUsername = user.username || user.nickname || displayName;
                 // 更新容量条
                 const used = (user.usedSize / 1024 / 1024).toFixed(1); // MB
                 const total = (user.totalSize / 1024 / 1024 / 1024).toFixed(0); // GB
@@ -273,12 +275,6 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="fw-bold mb-0">我的分享</h4>
                     <div class="d-flex align-items-center">
-                        <div class="form-check form-check-inline me-2">
-                            <input class="form-check-input" type="checkbox" id="selectAllShares">
-                            <label class="form-check-label small text-muted" for="selectAllShares">全选</label>
-                        </div>
-                        <button id="btnBatchDownload" class="btn btn-outline-danger btn-sm me-2">批量打包</button>
-                        <button id="btnAddById" class="btn btn-outline-secondary btn-sm me-2">添加分享ID</button>
                         <button id="btnRefreshShares" class="btn btn-primary btn-sm">刷新列表</button>
                     </div>
                 </div>
@@ -301,10 +297,52 @@
                     </div>
                 </div>
 
+                <!-- 新增：接收分享表单 -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">分享 ID</label>
+                        <input type="number" id="recvShareId" class="form-control" placeholder="输入分享 ID（shareId）">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">提取码</label>
+                        <input type="text" id="recvShareCode" class="form-control" placeholder="输入提取码（如果有）">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button id="btnReceiveShare" class="btn btn-primary w-100">接收分享</button>
+                    </div>
+                </div>
+
                 <div class="mb-3">
-                    <h6 class="fw-bold">分享列表</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">分享列表</h6>
+                        <div class="d-flex align-items-center">
+                            <div class="form-check form-check-inline me-2">
+                                <input class="form-check-input" type="checkbox" id="selectAllShares">
+                                <label class="form-check-label small text-muted" for="selectAllShares">全选</label>
+                            </div>
+                            <button id="btnBatchDownload" class="btn btn-outline-danger btn-sm">批量打包</button>
+                        </div>
+                    </div>
                     <div id="sharesList" class="list-group">
                         <div class="list-group-item text-center text-muted py-4">尚无分享，或点击“刷新列表”加载本会话创建的分享</div>
+                    </div>
+                </div>
+
+                <!-- 新增：已接收分享列表 -->
+                <div class="mb-3 mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">已接收的分享</h6>
+                        <div class="d-flex align-items-center">
+                            <div class="form-check form-check-inline me-2">
+                                <input class="form-check-input" type="checkbox" id="selectAllReceived">
+                                <label class="form-check-label small text-muted" for="selectAllReceived">全选</label>
+                            </div>
+                            <button id="btnBatchDownloadReceived" class="btn btn-outline-danger btn-sm">批量打包</button>
+                        </div>
+                    </div>
+
+                    <div id="receivedList" class="list-group">
+                        <div class="list-group-item text-center text-muted py-4">尚未接收任何分享</div>
                     </div>
                 </div>
 
@@ -317,7 +355,7 @@
             $('#btnCreateShare').on('click', function () {
                 const fileId = parseInt($('#shareFileId').val());
                 const validDays = parseInt($('#shareValidDays').val());
-                if (!fileId) return alert('请输入有效的文件 ID');
+                if (!fileId) return showError('请输入有效的文件 ID');
                 $.ajax({
                     url: '/api/share/create',
                     type: 'POST',
@@ -333,61 +371,127 @@
                             };
                             addShareToStore(share);
                             renderShareList();
-                            alert('分享创建成功，ID: ' + share.shareId + '，提取码: ' + share.code);
+                            showSuccess('分享创建成功，ID: ' + share.shareId + '，提取码: ' + share.code);
                         } else {
-                            alert('创建失败：' + (res.msg || '未知错误'));
+                            showError('创建失败：' + (res.msg || '未知错误'));
                         }
                     },
                     error: function (xhr) {
                         const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : '请求失败';
-                        alert('错误：' + msg);
+                        showError('错误：' + msg);
                     }
                 });
             });
 
-            $('#btnRefreshShares').on('click', function () { renderShareList(); });
+            // 接收分享：输入 shareId 与提取码，校验后加入已接收列表
+            $('#btnReceiveShare').on('click', function () {
+                const sid = $('#recvShareId').val();
+                const code = $('#recvShareCode').val();
+                if (!sid) return showError('请输入分享 ID');
+                if (!code) return showError('请输入提取码');
 
-            // 全选切换与批量下载
-            $('#selectAllShares').on('change', function () {
+                $('#btnReceiveShare').prop('disabled', true).text('接收中...');
+
+                // 1. 获取分享信息（公开接口）
+                $.get('/api/share/info/' + sid, function (res) {
+                    if (res.code === 200 && res.data) {
+                        const d = res.data;
+                        // 2. 校验提取码以获取临时 token
+                        $.ajax({
+                            url: '/api/share/check',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ shareId: Number(sid), code: code }),
+                            success: function (res2) {
+                                if (res2.code === 200) {
+                                    const token = res2.data;
+                                    const recv = {
+                                        shareId: d.shareId || sid,
+                                        fileId: d.fileId,
+                                        filename: d.filename || ('file_' + d.fileId),
+                                        fileSize: d.fileSize || 0,
+                                        shareUser: d.shareUser || '',
+                                        token: token
+                                    };
+                                    addReceivedShare(recv);
+                                    renderReceivedList();
+                                    showSuccess('接收成功：' + recv.filename);
+                                    $('#recvShareId').val('');
+                                    $('#recvShareCode').val('');
+                                } else {
+                                    showError('校验失败：' + res2.msg);
+                                }
+                            },
+                            error: function (xhr) {
+                                const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText;
+                                showError('校验失败：' + msg);
+                            },
+                            complete: function () { $('#btnReceiveShare').prop('disabled', false).text('接收分享'); }
+                        });
+                    } else {
+                        showError('获取分享信息失败：' + res.msg);
+                        $('#btnReceiveShare').prop('disabled', false).text('接收分享');
+                    }
+                }).fail(function (xhr) { showError('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); $('#btnReceiveShare').prop('disabled', false).text('接收分享'); });
+            });
+
+            $('#btnRefreshShares').off('click').on('click', function () { renderShareList(); loadMySharesFromServer(); });
+
+            // 初始渲染后同步后端历史分享
+            loadMySharesFromServer();
+
+            // 全选切换与批量下载 (分享列表)
+            $('#selectAllShares').off('change').on('change', function () {
                 const checked = $(this).prop('checked');
                 $('.share-select').prop('checked', checked);
             });
 
-            $('#btnBatchDownload').on('click', function () {
+            $('#btnBatchDownload').off('click').on('click', function () {
                 const ids = [];
                 $('.share-select:checked').each(function () {
                     const fid = $(this).data('fileid');
                     if (fid) ids.push(fid);
                 });
-                if (ids.length === 0) return alert('请选择至少一个包含 fileId 的分享项进行打包下载');
-                // 打包下载使用后端的 GET /api/file/download/batch?fileIds=1,2,3
+                if (ids.length === 0) return showError('请选择至少一个包含 fileId 的分享项进行打包下载');
                 const url = '/api/file/download/batch?fileIds=' + ids.join(',');
-                // 直接在新窗口中打开以触发浏览器下载
                 window.open(url, '_blank');
             });
 
-            $('#btnAddById').on('click', function () {
-                const sid = prompt('请输入要添加的分享 ID：');
-                if (!sid) return;
-                // 尝试获取分享信息（接口公开）并加入列表
-                $.get('/api/share/info/' + sid, function (res) {
-                    if (res.code === 200 && res.data) {
-                        const share = {
-                            shareId: res.data.shareId || sid,
-                            fileId: res.data.fileId || null,
-                            filename: res.data.filename || '未知',
-                            fileSize: res.data.fileSize || 0,
-                            shareUser: res.data.shareUser || '',
-                            expired: res.data.expired || false
-                        };
-                        addShareToStore(share);
-                        renderShareList();
-                        alert('已添加分享 ID：' + share.shareId);
-                    } else {
-                        alert('无法获取分享信息：' + res.msg);
-                    }
-                }).fail(function (xhr) { alert('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); });
+            // 全选切换与批量下载 (已接收列表)
+            $('#selectAllReceived').on('change', function () {
+                const checked = $(this).prop('checked');
+                $('.recv-select').prop('checked', checked);
             });
+
+            $('#btnBatchDownloadReceived').on('click', function () {
+                const ids = [];
+                $('.recv-select:checked').each(function () {
+                    const fid = $(this).data('fileid');
+                    if (fid) ids.push(fid);
+                });
+                if (ids.length === 0) return showError('请选择至少一个已接收项进行打包下载');
+                const url = '/api/file/download/batch?fileIds=' + ids.join(',');
+                window.open(url, '_blank');
+            });
+
+            // 全选切换与批量下载 (已接收列表)
+            $('#selectAllReceived').on('change', function () {
+                const checked = $(this).prop('checked');
+                $('.recv-select').prop('checked', checked);
+            });
+
+            $('#btnBatchDownloadReceived').on('click', function () {
+                const ids = [];
+                $('.recv-select:checked').each(function () {
+                    const fid = $(this).data('fileid');
+                    if (fid) ids.push(fid);
+                });
+                if (ids.length === 0) return showError('请选择至少一个已接收项进行打包下载');
+                const url = '/api/file/download/batch?fileIds=' + ids.join(',');
+                window.open(url, '_blank');
+            });
+
+            // 已删除“添加分享ID”功能（按项目要求移除）
 
             // 首次渲染
             renderShareList();
@@ -428,11 +532,17 @@
         // 渲染时重置全选状态
         $('#selectAllShares').prop('checked', false);
         const list = getStoredShares();
+        // 渲染已接收列表时也重置其全选
+        $('#selectAllReceived').prop('checked', false);
         if (!list || list.length === 0) {
             $list.html('<div class="list-group-item text-center text-muted py-4">尚无分享，或点击“刷新列表”加载本会话创建的分享</div>');
             return;
         }
         $list.empty();
+
+        // 将后端同步到本地的 myShares 显示在前面（本地会话创建的包含 code 的项优先）
+        // 注意：getStoredShares() 已包含合并过的服务端数据（如果 loadMySharesFromServer 被调用）
+
         list.forEach(function (s) {
             const title = s.filename ? s.filename : ('文件ID: ' + (s.fileId || '-'));
             const size = s.fileSize ? formatBytes(s.fileSize) : '';
@@ -451,7 +561,8 @@
                 '<button class="btn btn-outline-primary btn-copy-link">复制链接</button>' +
                 /* 去掉“查看”按钮，保留“在线浏览”与新增“下载” */
                 (s.fileId ? '<button class="btn btn-outline-secondary btn-download">在线浏览</button><button class="btn btn-outline-danger btn-save-download">下载</button>' : '') +
-                '<button class="btn btn-outline-warning btn-check-code">校验提取码</button>' +
+                '<button class="btn btn-outline-info btn-show-code">显示提取码</button>' +
+                '<button class="btn btn-outline-danger btn-remove-share">移除</button>' +
                 '</div>' +
                 '</div>'
             );
@@ -459,20 +570,20 @@
             // 绑定操作
             item.find('.btn-copy-link').on('click', function () {
                 const url = window.location.origin + '/share/' + s.shareId;
-                navigator.clipboard && navigator.clipboard.writeText(url).then(function () { alert('已复制链接：' + url); }).catch(function () { prompt('复制分享链接：', url); });
+                navigator.clipboard && navigator.clipboard.writeText(url).then(function () { showSuccess('已复制链接：' + url); }).catch(function () { prompt('复制分享链接：', url); });
             });
 
             // 原“查看”按钮已移除
 
             // 在线浏览（保留原来的打开新窗口行为）
             item.find('.btn-download').on('click', function () {
-                if (!s.fileId) return alert('无效的 fileId');
+                if (!s.fileId) return showError('无效的 fileId');
                 window.open('/api/file/download/' + s.fileId, '_blank');
             });
 
             // 新增：单文件直接下载（使用 fetch + blob 强制下载，避免预览）
             item.find('.btn-save-download').on('click', function () {
-                if (!s.fileId) return alert('无效的 fileId');
+                if (!s.fileId) return showError('无效的 fileId');
                 const url = '/api/file/download/' + s.fileId;
                 fetch(url, { method: 'GET' })
                     .then(function (res) {
@@ -499,28 +610,55 @@
                         a.remove();
                         setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
                     })
-                    .catch(function (err) { alert('下载失败：' + err.message); });
+                    .catch(function (err) { showError('下载失败：' + err.message); });
 
             });
 
-            item.find('.btn-check-code').on('click', function () {
-                const code = s.code || prompt('请输入该分享的提取码：');
-                if (!code) return;
+            // 显示提取码（若当前会话创建过该分享则可直接显示，否则给出说明）
+            item.find('.btn-show-code').on('click', function () {
+                const stored = (function () {
+                    try { return JSON.parse(sessionStorage.getItem('myShares') || '[]'); } catch (e) { return []; }
+                })();
+                const found = stored.find(x => String(x.shareId) === String(s.shareId));
+                if (found && found.code) {
+                    showInfo('提取码：' + found.code + '（仅在创建者会话可见）');
+                } else if (s.code) {
+                    // 如果 s 对象中包含 code（安全会话中）则显示
+                    showInfo('提取码：' + s.code + '（仅在创建者会话可见）');
+                } else {
+                    showInfo('提取码不可用：仅分享创建者在其会话中可见。若非创建者请联系分享者获取提取码。');
+                }
+            });
+
+            // 移除分享（发送 DELETE 到后端，后端会校验权限）
+            item.find('.btn-remove-share').on('click', function () {
+                if (!confirm('确认移除该分享吗？')) return;
+                const sid = s.shareId;
                 $.ajax({
-                    url: '/api/share/check',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ shareId: s.shareId, code: code }),
+                    url: '/api/share/' + sid,
+                    type: 'DELETE',
                     success: function (res) {
-                        if (res.code === 200) {
-                            alert('校验成功，临时 token：' + res.data);
+                        if (res && res.code === 200) {
+                            let arr = getStoredShares();
+                            arr = arr.filter(function (x) { return String(x.shareId) !== String(sid); });
+                            saveStoredShares(arr);
+                            renderShareList();
+                            showSuccess('已移除分享 ' + sid);
                         } else {
-                            alert('校验失败：' + res.msg);
+                            showError('移除失败：' + (res.msg || '未知错误'));
                         }
                     },
-                    error: function (xhr) { alert('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); }
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText;
+                        showError('移除失败：' + msg);
+                    }
                 });
             });
+
+            // 如果服务端的数据优先显示（历史分享）需额外样式标识
+            if (s.shareUser && window.currentUsername && s.shareUser !== window.currentUsername) {
+                item.addClass('bg-light');
+            }
 
             $list.append(item);
         });
@@ -531,6 +669,154 @@
         const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
         return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+    }
+
+    // Toast / 通知助手（替代 alert）
+    function _showToast(msg, variant) {
+        const $toast = $('#appToast');
+        const $body = $('#appToastBody');
+        $body.text(msg);
+        $toast.removeClass('bg-danger bg-success bg-info');
+        if (variant === 'success') $toast.addClass('bg-success');
+        else if (variant === 'info') $toast.addClass('bg-info');
+        else $toast.addClass('bg-danger');
+        const bsToast = new bootstrap.Toast(document.getElementById('appToast'), { delay: 4000 });
+        bsToast.show();
+    }
+
+    function showError(msg) { _showToast(msg, 'error'); }
+    function showSuccess(msg) { _showToast(msg, 'success'); }
+    function showInfo(msg) { _showToast(msg, 'info'); }
+
+    // 从后端获取当前用户的历史分享并合并到 sessionStorage.myShares 中
+    function loadMySharesFromServer() {
+        $.get('/api/share/my', function (res) {
+            if (res && res.code === 200 && Array.isArray(res.data)) {
+                const serverList = res.data.map(function (s) {
+                    return {
+                        shareId: s.shareId,
+                        fileId: s.fileId,
+                        filename: s.fileName || s.filename || '',
+                        fileSize: s.fileSize || s.size || 0,
+                        shareUser: s.shareUser || '',
+                        expireTime: s.expireTime || null,
+                        expired: !!s.expired
+                    };
+                });
+
+                // 合并策略：保留会话内已存在（可能包含 code）的记录优先
+                const local = getStoredShares();
+                const map = {};
+                serverList.forEach(function (it) { map[String(it.shareId)] = it; });
+                local.forEach(function (it) {
+                    const k = String(it.shareId);
+                    if (map[k]) {
+                        // 保留本地信息（如 code、filename 覆盖服务器）
+                        map[k] = Object.assign({}, map[k], it);
+                    } else {
+                        map[k] = it;
+                    }
+                });
+
+                // 将有 code 的项排在前面以便创建者快速查找
+                const merged = Object.keys(map).map(function (k) { return map[k]; });
+                merged.sort(function (a, b) { return (b.code ? 1 : 0) - (a.code ? 1 : 0); });
+                saveStoredShares(merged);
+                renderShareList();
+            }
+        }).fail(function () { console.warn('加载历史分享失败'); });
+    }
+
+    // 已接收分享的本地存储管理
+    function getReceivedShares() {
+        try { return JSON.parse(sessionStorage.getItem('receivedShares') || '[]'); } catch (e) { return []; }
+    }
+
+    function saveReceivedShares(list) { sessionStorage.setItem('receivedShares', JSON.stringify(list || [])); }
+
+    function addReceivedShare(s) {
+        const list = getReceivedShares();
+        if (!list.find(x => String(x.shareId) === String(s.shareId))) {
+            list.unshift(s);
+            saveReceivedShares(list);
+        } else {
+            // 更新 token（可能重新接收）
+            const idx = list.findIndex(x => String(x.shareId) === String(s.shareId));
+            list[idx] = s;
+            saveReceivedShares(list);
+        }
+    }
+
+    function removeReceivedShare(shareId) {
+        let list = getReceivedShares();
+        list = list.filter(x => String(x.shareId) !== String(shareId));
+        saveReceivedShares(list);
+    }
+
+    function renderReceivedList() {
+        const $list = $('#receivedList');
+        const list = getReceivedShares();
+        if (!list || list.length === 0) {
+            $list.html('<div class="list-group-item text-center text-muted py-4">尚未接收任何分享</div>');
+            return;
+        }
+        $list.empty();
+        list.forEach(function (s) {
+            const title = s.filename || ('文件ID: ' + (s.fileId || '-'));
+            const size = s.fileSize ? formatBytes(s.fileSize) : '';
+            const item = $(
+                '<div class="list-group-item d-flex justify-content-between align-items-center">' +
+                '<div class="d-flex align-items-center flex-grow-1">' +
+                (s.fileId ? ('<input type="checkbox" class="form-check-input me-3 recv-select" data-fileid="' + s.fileId + '">') : ('<input type="checkbox" class="form-check-input me-3" disabled>')) +
+                '<div>' +
+                '<div class="fw-bold">' + title + (s.shareUser ? (' <small class="text-muted">by ' + s.shareUser + '</small>') : '') + '</div>' +
+                '<div class="text-muted small">' + size + ' · 分享ID: <code>' + s.shareId + '</code></div>' +
+                '</div>' +
+                '</div>' +
+                '<div class="btn-group btn-group-sm">' +
+                '<button class="btn btn-outline-secondary recv-preview">在线浏览</button>' +
+                '<button class="btn btn-outline-danger recv-download">下载</button>' +
+                '<button class="btn btn-outline-danger recv-remove">移除</button>' +
+                '</div>' +
+                '</div>'
+            );
+
+            item.find('.recv-preview').on('click', function () {
+                if (!s.fileId) return showError('无效的 fileId');
+                let url = '/api/file/download/' + s.fileId;
+                if (s.token) url += '?token=' + encodeURIComponent(s.token);
+                window.open(url, '_blank');
+            });
+
+            item.find('.recv-download').on('click', function () {
+                if (!s.fileId) return showError('无效的 fileId');
+                let url = '/api/file/download/' + s.fileId;
+                if (s.token) url += '?token=' + encodeURIComponent(s.token);
+                fetch(url).then(function (res) {
+                    if (!res.ok) throw new Error('服务器返回 ' + res.status);
+                    const disposition = res.headers.get('Content-Disposition') || '';
+                    let filename = s.filename || ('file_' + s.fileId);
+                    const m = /filename\*?=([^;]+)/i.exec(disposition);
+                    if (m) {
+                        let raw = m[1].trim(); raw = raw.replace(/^UTF-8''/, '').replace(/^"|"$/g, '');
+                        try { filename = decodeURIComponent(raw); } catch (e) { filename = raw; }
+                    }
+                    return res.blob().then(function (blob) { return { blob: blob, filename: filename }; });
+                }).then(function (obj) {
+                    const blobUrl = URL.createObjectURL(obj.blob);
+                    const a = document.createElement('a'); a.href = blobUrl; a.download = obj.filename; document.body.appendChild(a); a.click(); a.remove();
+                    setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
+                }).catch(function (err) { showError('下载失败：' + err.message); });
+            });
+
+            item.find('.recv-remove').on('click', function () {
+                if (!confirm('确认移除该已接收的分享吗？')) return;
+                removeReceivedShare(s.shareId);
+                renderReceivedList();
+            });
+
+            $list.append(item);
+        });
     }
 
     // 确保侧边栏“我的分享”在任何情况下都能触发切换（事件委托，增强鲁棒性）
@@ -546,6 +832,16 @@
         confirmModal.show();
     }
 </script>
+
+<!-- 全局 Toast（用于替换 alert 提示，避免使用 window.alert） -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    <div id="appToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="appToastBody"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
 
 <!-- 退出登录确认模态框：与 profile.html 保持一致交互 -->
 <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
