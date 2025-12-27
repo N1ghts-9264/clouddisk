@@ -1,0 +1,6 @@
+### 上传单个文件到根目录
+POST http://localhost:8080/api/file/upload
+
+# 上传本地文件，请修改路径为你实际文件路径
+file=@C:\Users\1\Desktop\test.txt
+parentId=0

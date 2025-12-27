@@ -10,6 +10,8 @@ import com.buaa.clouddisk.module.user.entity.User;
 import com.buaa.clouddisk.module.user.mapper.UserMapper;
 import com.buaa.clouddisk.module.user.service.IUserService;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -17,6 +19,7 @@ import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 
 @Slf4j
+@Primary
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
 

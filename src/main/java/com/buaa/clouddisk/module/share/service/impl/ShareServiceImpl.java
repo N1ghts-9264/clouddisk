@@ -14,6 +14,8 @@ import com.buaa.clouddisk.module.share.service.IShareService;
 import com.buaa.clouddisk.module.user.entity.User;
 import com.buaa.clouddisk.module.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Primary
 @RequiredArgsConstructor
 public class ShareServiceImpl extends ServiceImpl<ShareMapper, Share> implements IShareService {
 
