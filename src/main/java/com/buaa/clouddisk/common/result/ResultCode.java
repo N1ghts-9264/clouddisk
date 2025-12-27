@@ -8,6 +8,7 @@ public enum ResultCode {
     NOT_FOUND(404, "资源未找到"),
     ERROR(500, "系统内部错误");
 
+    public static ResultCode FAIL;
     public int code;
     public String msg;
 

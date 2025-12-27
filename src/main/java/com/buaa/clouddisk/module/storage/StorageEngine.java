@@ -33,13 +33,19 @@ public class StorageEngine {
 
         // 3. 处理重名并获取最终物理名 (角色B 核心任务 5)
         String finalName = FileUtil.getUniqueFileName(dir, file.getOriginalFilename());
-        
-        // 4. 保存文件
+
+        // 4. 保存文件（再次确保父目录存在，避免偶发路径不存在问题）
         File targetFile = new File(dir, finalName);
+        File parentDir = targetFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            if (!parentDir.mkdirs()) {
+                throw new IOException("无法创建目录: " + parentDir.getAbsolutePath());
+            }
+        }
         file.transferTo(targetFile);
 
         log.info("文件已存储至: {}", targetFile.getAbsolutePath());
-        
+
         // 返回数据库要存的相对路径
         return relativePath + finalName;
     }

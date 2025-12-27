@@ -5,5 +5,4 @@ import com.buaa.clouddisk.module.file.entity.SysFile;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysFileMapper extends BaseMapper<SysFile> {
-}
+public interface SysFileMapper extends BaseMapper<SysFile> {}

@@ -19,8 +19,12 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/user/check-username",
                         "/api/share/info/**",
                         "/api/share/check",
+                        "/api/file/download/**",
                         "/error",
                         "/", "/index.html",
+
+                        // 访客访问分享页（/share/{shareId}）
+                        "/share/**",
 
                         // === 核心修复点 START ===
                         "/images/**",       // 放行 images 目录下所有文件

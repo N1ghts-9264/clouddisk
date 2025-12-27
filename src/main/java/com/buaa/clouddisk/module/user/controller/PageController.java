@@ -36,8 +36,16 @@ public class PageController {
     public String sharePage() {
         return "share"; // 对应 resources/templates/share.html
     }
+
     @GetMapping("/test_upload")
     public String testUploadPage() {
         return "test_upload"; // 对应 resources/templates/test_upload.html
     }
+
+
+    @GetMapping("/file_manager")
+    public String file_managerPage() {
+        return "file_manager"; // 对应 resources/templates/file_manager.html
+    }
+
 }

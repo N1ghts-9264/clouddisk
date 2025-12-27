@@ -50,6 +50,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>1.6.15</version>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -81,7 +86,6 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.buaa.clouddisk.ClouddiskApplication</mainClass>
-                    <skip>true</skip>
                 </configuration>
                 <executions>
                     <execution>

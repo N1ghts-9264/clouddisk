@@ -7,54 +7,231 @@
     <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.staticfile.org/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; }
-        .card { max-width: 900px; margin: 36px auto; }
+        :root {
+            --brand-blue: #0d6efd;
+            --bg-light: #f8f9fa;
+        }
+        
+        body { 
+            background: var(--bg-light);
+            min-height: 100vh;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 顶部导航 */
+        .navbar {
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+            height: 64px;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--brand-blue) !important;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .share-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        
+        .share-card {
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .card-header-custom {
+            background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+            border-bottom: 2px solid #e8eaed;
+            padding: 25px 30px;
+        }
+        
+        .card-header-custom h4 {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #1a1f2c;
+            margin-bottom: 5px;
+        }
+        
+        .card-header-custom p {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        
+        .card-body-custom {
+            padding: 30px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.875rem;
+            margin-bottom: 8px;
+        }
+        
+        .input-group {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .input-group-text {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-right: none;
+            color: #6c757d;
+        }
+        
+        .form-control {
+            border: 1px solid #dee2e6;
+            border-left: none;
+            padding: 10px 14px;
+        }
+        
+        .form-control:focus {
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+            z-index: 3;
+        }
+        
+        .input-group:focus-within .input-group-text {
+            border-color: var(--brand-blue);
+            background: #e7f1ff;
+            color: var(--brand-blue);
+        }
+        
+        .btn-primary {
+            background: var(--brand-blue);
+            border: none;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            background: #0b5ed7;
+            transform: translateY(-1px);
+        }
+        
+        .result-box {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .file-info {
+            border-left: 3px solid var(--brand-blue);
+            padding-left: 15px;
+            background: white;
+            padding: 15px 15px 15px 18px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .file-info h6 {
+            font-size: 1rem;
+            color: #212529;
+            margin-bottom: 5px;
+        }
+        
+        .btn-success {
+            font-weight: 600;
+        }
+        
+        .btn-outline-secondary {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
-<div class="card shadow">
-    <div class="card-body">
-        <h4 class="card-title">分享访问</h4>
-        <p class="text-muted">请输入分享 ID 与提取码并点击“接收分享”以获取文件（访客视图，无需登录）。</p>
 
-        <div class="mb-3 row g-3 align-items-end">
-            <div class="col-md-4">
-                <label class="form-label">分享 ID</label>
-                <input type="number" id="visitShareId" class="form-control" placeholder="分享 ID 或直接访问 /share/{shareId}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">提取码</label>
-                <input type="text" id="visitShareCode" class="form-control" maxlength="8" placeholder="输入提取码（如果有）">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button id="btnReceiveShare" class="btn btn-primary w-100">接收分享</button>
-            </div>
+<!-- 顶部导航条 -->
+<nav class="navbar navbar-expand-lg navbar-light px-4">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/index">
+            <i class="bi bi-cloud-check-fill fs-3"></i>
+            <span>HiJDK Cloud Drive</span>
+        </a>
+    </div>
+</nav>
+
+<div class="share-container">
+    <div class="share-card">
+        <div class="card-header-custom">
+            <h4>
+                <i class="bi bi-share me-2" style="color: var(--brand-blue);"></i>访问分享
+            </h4>
+            <p>输入提取码即可获取文件</p>
         </div>
-
-        <!-- 结果区域：仅在接收成功后显示文件信息和操作 -->
-        <div id="receiveResult" class="border rounded p-3 mb-3" style="background:#fff; display:none;">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h5 id="rr_filename" class="mb-1"></h5>
+        
+        <div class="card-body-custom">
+            <div class="mb-3">
+                <label class="form-label">分享 ID</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                    <input type="number" id="visitShareId" class="form-control" placeholder="输入分享 ID">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label">提取码</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
+                    <input type="text" id="visitShareCode" class="form-control" maxlength="8" placeholder="输入提取码">
+                </div>
+            </div>
+            
+            <button id="btnReceiveShare" class="btn btn-primary w-100">
+                <i class="bi bi-arrow-down-circle me-2"></i>接收分享
+            </button>
+            
+            <!-- 结果区域 -->
+            <div id="receiveResult" class="result-box mt-4" style="display:none;">
+                <div class="file-info mb-3">
+                    <h6 id="rr_filename" class="fw-bold mb-2"></h6>
                     <div class="text-muted small" id="rr_meta"></div>
                 </div>
-                <div class="text-end">
-                    <div id="rr_status" class="mb-2"></div>
-                    <div>
-                        <button id="rr_preview" class="btn btn-outline-secondary btn-sm me-2">在线浏览</button>
-                        <button id="rr_download" class="btn btn-danger btn-sm">下载</button>
-                    </div>
+                <div class="d-flex gap-2">
+                    <button id="rr_download" class="btn btn-success flex-fill">
+                        <i class="bi bi-download me-1"></i>下载
+                    </button>
+                    <button id="rr_preview" class="btn btn-outline-secondary flex-fill">
+                        <i class="bi bi-eye me-1"></i>预览
+                    </button>
+                </div>
+                <!-- 已登录用户专属：转存按钮 -->
+                <div class="d-flex gap-2 mt-2" id="userButtons" style="display:none;">
+                    <button id="rr_save" class="btn btn-primary w-100">
+                        <i class="bi bi-cloud-arrow-down me-1"></i>转存到我的网盘
+                    </button>
                 </div>
             </div>
+            
+            <div id="msgArea" class="mt-3" style="min-height:28px;"></div>
         </div>
-
-        <div id="msgArea" style="min-height:28px;"></div>
-
     </div>
 </div>
 
 <script src="/js/jquery.min.js"></script>
 <script>
+    // 全局变量存储当前文件信息
+    let currentFileInfo = null;
+    let isUserLoggedIn = false;
+    
     // 如果访问以 /share/{id} 形式打开，本页会尝试从 URL 中读取 shareId
     $(function () {
         const path = window.location.pathname || '';
@@ -62,23 +239,28 @@
         if (match) {
             $('#visitShareId').val(match[1]);
         }
+        
+        // 检测登录状态
+        checkLoginStatus();
 
         $('#btnReceiveShare').on('click', function () {
             const sid = $('#visitShareId').val();
             const code = $('#visitShareCode').val();
-            if (!sid) return alert('请输入分享 ID');
-            if (!code) return alert('请输入提取码');
+            if (!sid) return $('#msgArea').html('<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>请输入分享 ID</div>');
+            if (!code) return $('#msgArea').html('<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>请输入提取码</div>');
 
-            $('#msgArea').html('<div class="text-muted">正在验证分享信息...</div>');
+            $('#msgArea').html('<div class="text-muted small"><span class="spinner-border spinner-border-sm me-2"></span>正在验证...</div>');
+            $('#btnReceiveShare').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>验证中...');
+            $('#receiveResult').hide();
             // 1. 获取分享信息
             $.get('/api/share/info/' + sid, function (res) {
                 if (!(res && res.code === 200 && res.data)) {
-                    $('#msgArea').html('<div class="alert alert-danger p-2">获取分享信息失败：' + (res ? res.msg : '未知错误') + '</div>');
+                    $('#msgArea').html('<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle me-1"></i>获取分享信息失败：' + (res ? res.msg : '未知错误') + '</div>');
+                    $('#btnReceiveShare').prop('disabled', false).html('<i class="bi bi-download me-2"></i>接收分享');
                     return;
                 }
                 const d = res.data;
                 // 2. 校验提取码以获得临时 token
-                $('#msgArea').html('<div class="text-muted">正在校验提取码...</div>');
                 $.ajax({
                     url: '/api/share/check',
                     type: 'POST',
@@ -86,7 +268,8 @@
                     data: JSON.stringify({ shareId: Number(sid), code: code }),
                     success: function (res2) {
                         if (!(res2 && res2.code === 200 && res2.data)) {
-                            $('#msgArea').html('<div class="alert alert-danger p-2">提取码校验失败：' + (res2 ? res2.msg : '未知错误') + '</div>');
+                            $('#msgArea').html('<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle me-1"></i>提取码校验失败：' + (res2 ? res2.msg : '未知错误') + '</div>');
+                            $('#btnReceiveShare').prop('disabled', false).html('<i class="bi bi-download me-2"></i>接收分享');
                             return;
                         }
                         const token = res2.data;
@@ -99,21 +282,32 @@
                             shareUser: d.shareUser || '',
                             token: token
                         };
-                        // 保持与“已接收列表”一致的存储结构
-                        try {
-                            let arr = JSON.parse(sessionStorage.getItem('receivedShares') || '[]');
-                            const exists = arr.find(x => String(x.shareId) === String(rec.shareId));
-                            if (!exists) arr.unshift(rec); else arr = arr.map(x=> String(x.shareId)===String(rec.shareId)?rec:x);
-                            sessionStorage.setItem('receivedShares', JSON.stringify(arr));
-                        } catch (e) { console.warn(e); }
-
+                        
                         // 显示结果区
                         $('#rr_filename').text(rec.filename);
-                        $('#rr_meta').text('大小：' + rec.fileSize + ' 字节 · 分享者：' + rec.shareUser);
-                        $('#rr_status').html('<span class="badge bg-success">接收成功</span>');
+                        const sizeText = formatFileSize(rec.fileSize);
+                        $('#rr_meta').html('<i class="bi bi-file-earmark me-1"></i>' + sizeText);
                         $('#receiveResult').show();
-                        $('#msgArea').html('<div class="alert alert-success p-2">接收成功：已将文件加入你的接收列表。</div>');
-
+                        $('#msgArea').html('<div class="alert alert-success small mb-0"><i class="bi bi-check-circle me-1"></i>接收成功！现在可以下载或预览文件</div>');
+                        
+                        // 保存当前文件信息
+                        currentFileInfo = rec;
+                        
+                        // 隐藏接收按钮，显示结果区
+                        $('#btnReceiveShare').hide();
+                        
+                        // 隐藏转存按钮(默认)
+                        $('#userButtons').hide();
+                        
+                        // 在显示结果前,重新检查登录状态
+                        checkLoginStatus().then(function() {
+                            // 根据登录状态显示相应按钮
+                            if (isUserLoggedIn) {
+                                $('#userButtons').show();
+                            }
+                        });
+                        
+                        // 重置按钮状态(不再需要,已隐藏)
                         // 绑定操作按钮
                         $('#rr_preview').off('click').on('click', function () {
                             if (!rec.fileId) return alert('无效的 fileId');
@@ -143,13 +337,78 @@
                     },
                     error: function (xhr) {
                         const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText;
-                        $('#msgArea').html('<div class="alert alert-danger p-2">提取码校验失败：' + msg + '</div>');
+                        $('#msgArea').html('<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle me-1"></i>校验失败：' + msg + '</div>');
+                        $('#btnReceiveShare').prop('disabled', false).html('<i class="bi bi-download me-2"></i>接收分享');
                     }
                 });
 
-            }).fail(function (xhr) { $('#msgArea').html('<div class="alert alert-danger p-2">获取分享信息失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText) + '</div>'); });
+            }).fail(function (xhr) { 
+                $('#msgArea').html('<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle me-1"></i>获取失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText) + '</div>'); 
+                $('#btnReceiveShare').prop('disabled', false).html('<i class="bi bi-download me-2"></i>接收分享'); 
+            });
+       });
+    });
+    
+    // 检测登录状态(使用Promise保证完成)
+    function checkLoginStatus() {
+        return $.ajax({
+            url: '/api/user/info',
+            type: 'GET'
+        }).then(function(res) {
+            if (res && res.code === 200) {
+                isUserLoggedIn = true;
+                console.log('用户已登录');
+            } else {
+                isUserLoggedIn = false;
+                console.log('用户未登录');
+            }
+        }).catch(function() {
+            isUserLoggedIn = false;
+            console.log('用户未登录(请求失败)');
+        });
+    }
+    
+    // 转存按钮事件
+    $(document).on('click', '#rr_save', function() {
+        if (!currentFileInfo || !currentFileInfo.fileId) {
+            alert('文件信息不完整');
+            return;
+        }
+        
+        const $btn = $(this);
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>转存中...');
+        
+        $.ajax({
+            url: '/api/file/save-share',
+            type: 'POST',
+            data: {
+                fileId: currentFileInfo.fileId,
+                targetParentId: 0 // 默认保存到根目录
+            },
+            success: function(res) {
+                if (res && res.code === 200) {
+                    $('#msgArea').html('<div class="alert alert-success small mb-0"><i class="bi bi-check-circle me-1"></i>转存成功！文件已保存到"我的文件"</div>');
+                    $btn.html('<i class="bi bi-check-circle me-1"></i>已转存');
+                } else {
+                    $('#msgArea').html('<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle me-1"></i>转存失败：' + (res.msg || '未知错误') + '</div>');
+                    $btn.prop('disabled', false).html('<i class="bi bi-cloud-arrow-down me-1"></i>转存到我的网盘');
+                }
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.msg) || xhr.statusText || '网络错误';
+                $('#msgArea').html('<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle me-1"></i>转存失败：' + msg + '</div>');
+                $btn.prop('disabled', false).html('<i class="bi bi-cloud-arrow-down me-1"></i>转存到我的网盘');
+            }
         });
     });
+    
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+    }
 
     function fetchShareInfo(shareId) {
         $('#msgArea').empty();
