@@ -30,7 +30,7 @@ spring:
 
   # 物理存储位置 
 clouddisk:
-  upload-path: d:/clouddisk-1/clouddisk_storage/
+  upload-path: E:\cloud_disk_1\clouddisk_storage
 
 
 

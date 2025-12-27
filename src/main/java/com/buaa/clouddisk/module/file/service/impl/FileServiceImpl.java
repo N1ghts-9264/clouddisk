@@ -31,6 +31,31 @@ public class FileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impleme
             throw new RuntimeException("禁止上传危险格式文件！");
         }
 
+        // 2. 检查同名文件
+        SysFile queryFile = new SysFile();
+        queryFile.setUserId(userId);
+        queryFile.setParentId(parentId);
+        queryFile.setFilename(originalName);
+        queryFile.setIsDeleted(false);
+        long count = this.count(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>(queryFile));
+        if (count > 0) {
+            // 自动重命名：添加 (1), (2) 等后缀
+            String baseName = originalName;
+            String extension = "";
+            int dotIndex = originalName.lastIndexOf('.');
+            if (dotIndex > 0) {
+                baseName = originalName.substring(0, dotIndex);
+                extension = originalName.substring(dotIndex);
+            }
+            int suffix = 1;
+            do {
+                originalName = baseName + "(" + suffix + ")" + extension;
+                queryFile.setFilename(originalName);
+                count = this.count(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>(queryFile));
+                suffix++;
+            } while (count > 0);
+        }
+
         // ✅ 关键修复：用 Exception 捕获 + 保留 IOException 导入（让 IDE 心里踏实）
         String md5;
         try {
@@ -40,7 +65,7 @@ public class FileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impleme
             throw new RuntimeException("计算文件MD5时出错", e);
         }
 
-        // 2. 秒传/去重逻辑（不变）
+        // 3. 秒传/去重逻辑（不变）
         SysFile existFile = getExistFileByMd5(md5);
         String finalPath = null;
         try {
@@ -49,7 +74,7 @@ public class FileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impleme
             throw new RuntimeException(e);
         }
 
-        // 3. 落库（不变）
+        // 4. 落库（使用可能自动重命名后的文件名）
         SysFile sysFile = new SysFile();
         sysFile.setUserId(userId);
         sysFile.setParentId(parentId);

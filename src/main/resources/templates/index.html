@@ -339,9 +339,17 @@
                                 </ol>
                             </nav>
                         </div>
-                        <button class="btn btn-primary btn-sm px-3" id="btnUploadEntry">
-                            <i class="bi bi-upload me-1"></i> 上传文件
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm px-3" id="btnCreateFolder">
+                                <i class="bi bi-folder-plus me-1"></i> 新建文件夹
+                            </button>
+                            <button class="btn btn-primary btn-sm px-3" id="btnUploadEntry">
+                                <i class="bi bi-upload me-1"></i> 上传文件
+                            </button>
+                            <button class="btn btn-outline-success btn-sm px-3 d-none" id="btnBatchDownloadFiles">
+                                <i class="bi bi-download me-1"></i> 批量下载
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="file-list-container">
@@ -349,16 +357,19 @@
                         <table class="table table-hover align-middle" id="fileTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 40%; padding-left: 25px;">文件名</th>
-                                    <th style="width: 15%">类型</th>
-                                    <th style="width: 15%">大小</th>
-                                    <th style="width: 20%">修改日期</th>
-                                    <th style="width: 10%; padding-right: 25px;" class="text-end">操作</th>
+                                    <th style="width: 5%; padding-left: 25px;">
+                                        <input type="checkbox" class="form-check-input" id="selectAllFiles">
+                                    </th>
+                                    <th style="width: 35%">文件名</th>
+                                    <th style="width: 12%">类型</th>
+                                    <th style="width: 12%">大小</th>
+                                    <th style="width: 18%">修改日期</th>
+                                    <th style="width: 18%; padding-right: 25px;" class="text-end">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="fileTableBody">
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-5">
+                                    <td colspan="6" class="text-center text-muted py-5">
                                         <div class="spinner-border text-primary mb-2" role="status"></div>
                                         <div>正在加载当前目录...</div>
                                     </td>
@@ -376,232 +387,88 @@
             loadFileList();
 
         } else if (page === 'shares') {
-            // 我的分享页面：使用后端已实现的接口完成创建与校验，并在本次会话中缓存已创建的分享列表
+            // 我的分享页面：UI风格与“我的文件”保持一致
             $content.html(`
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold mb-0">我的分享</h4>
-                    <div class="d-flex align-items-center">
-                        <button id="btnRefreshShares" class="btn btn-primary btn-sm">刷新列表</button>
-                    </div>
-                </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label">文件 ID</label>
-                        <input type="number" id="shareFileId" class="form-control" placeholder="输入要分享的 fileId">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">有效期 (天)</label>
-                        <select id="shareValidDays" class="form-control">
-                            <option value="7">7天</option>
-                            <option value="30">30天</option>
-                            <option value="0">永久有效</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button id="btnCreateShare" class="btn btn-success w-100">生成分享</button>
-                    </div>
-                </div>
-
-                <!-- 新增：接收分享表单 -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label">分享 ID</label>
-                        <input type="number" id="recvShareId" class="form-control" placeholder="输入分享 ID（shareId）">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">提取码</label>
-                        <input type="text" id="recvShareCode" class="form-control" placeholder="输入提取码（如果有）">
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button id="btnReceiveShare" class="btn btn-primary w-100">接收分享</button>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">分享列表</h6>
-                        <div class="d-flex align-items-center">
-                            <div class="form-check form-check-inline me-2">
-                                <input class="form-check-input" type="checkbox" id="selectAllShares">
-                                <label class="form-check-label small text-muted" for="selectAllShares">全选</label>
-                            </div>
-                            <button id="btnBatchDownload" class="btn btn-outline-danger btn-sm">批量打包</button>
+                <div class="file-list-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="fw-bold mb-1">我的分享</h4>
+                            <p class="text-muted small mb-0">管理你的分享链接和已转存的文件</p>
                         </div>
-                    </div>
-                    <div id="sharesList" class="list-group">
-                        <div class="list-group-item text-center text-muted py-4">尚无分享，或点击“刷新列表”加载本会话创建的分享</div>
-                    </div>
-                </div>
-
-                <!-- 新增：已接收分享列表 -->
-                <div class="mb-3 mt-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">已接收的分享</h6>
-                        <div class="d-flex align-items-center">
-                            <div class="form-check form-check-inline me-2">
-                                <input class="form-check-input" type="checkbox" id="selectAllReceived">
-                                <label class="form-check-label small text-muted" for="selectAllReceived">全选</label>
-                            </div>
-                            <button id="btnBatchDownloadReceived" class="btn btn-outline-danger btn-sm">批量打包</button>
-                        </div>
-                    </div>
-
-                    <div id="receivedList" class="list-group">
-                        <div class="list-group-item text-center text-muted py-4">尚未接收任何分享</div>
+                        <button class="btn btn-outline-primary btn-sm px-3" id="btnRefreshShares">
+                            <i class="bi bi-arrow-clockwise me-1"></i> 刷新
+                        </button>
                     </div>
                 </div>
 
-                <div class="mt-3">
-                    <small class="text-muted">说明：后端公开接口 <code>/api/share/info/{shareId}</code> 可用于查看任意分享信息；若需展示历史所有分享，请让后端开放分享列表接口。</small>
+                <!-- 分享列表 -->
+                <div class="file-list-container mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-3 pt-3">
+                        <h6 class="fw-bold mb-0">我创建的分享</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="sharesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40%; padding-left: 25px;">文件名</th>
+                                    <th style="width: 12%">分享 ID</th>
+                                    <th style="width: 18%">创建时间</th>
+                                    <th style="width: 12%">有效期</th>
+                                    <th style="width: 18%; padding-right: 25px;" class="text-end">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sharesTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-5">
+                                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                                        <div>正在加载分享列表...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 转存列表 -->
+                <div class="file-list-container mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-3 pt-3">
+                        <h6 class="fw-bold mb-0">我转存的文件</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="savedTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40%; padding-left: 25px;">文件名</th>
+                                    <th style="width: 12%">原分享 ID</th>
+                                    <th style="width: 18%">转存时间</th>
+                                    <th style="width: 12%">分享者</th>
+                                    <th style="width: 18%; padding-right: 25px;" class="text-end">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="savedTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        暂无转存记录
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `);
 
-            // 事件绑定
-            $('#btnCreateShare').on('click', function () {
-                const fileId = parseInt($('#shareFileId').val());
-                const validDays = parseInt($('#shareValidDays').val());
-                if (!fileId) return showError('请输入有效的文件 ID');
-                $.ajax({
-                    url: '/api/share/create',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ fileId: fileId, validDays: validDays }),
-                    success: function (res) {
-                        if (res.code === 200 && res.data) {
-                            const share = {
-                                shareId: res.data.shareId,
-                                code: res.data.code,
-                                fileId: fileId,
-                                expireTime: res.data.expireTime || null
-                            };
-                            addShareToStore(share);
-                            renderShareList();
-                            showSuccess('分享创建成功，ID: ' + share.shareId + '，提取码: ' + share.code);
-                        } else {
-                            showError('创建失败：' + (res.msg || '未知错误'));
-                        }
-                    },
-                    error: function (xhr) {
-                        const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : '请求失败';
-                        showError('错误：' + msg);
-                    }
-                });
+            // 加载分享列表
+            loadSharesList();
+            
+            // 加载转存列表
+            loadSavedList();
+
+            // 刷新按钮
+            $('#btnRefreshShares').off('click').on('click', function () {
+                loadSharesList();
+                loadSavedList();
             });
-
-            // 接收分享：输入 shareId 与提取码，校验后加入已接收列表
-            $('#btnReceiveShare').on('click', function () {
-                const sid = $('#recvShareId').val();
-                const code = $('#recvShareCode').val();
-                if (!sid) return showError('请输入分享 ID');
-                if (!code) return showError('请输入提取码');
-
-                $('#btnReceiveShare').prop('disabled', true).text('接收中...');
-
-                // 1. 获取分享信息（公开接口）
-                $.get('/api/share/info/' + sid, function (res) {
-                    if (res.code === 200 && res.data) {
-                        const d = res.data;
-                        // 2. 校验提取码以获取临时 token
-                        $.ajax({
-                            url: '/api/share/check',
-                            type: 'POST',
-                            contentType: 'application/json',
-                            data: JSON.stringify({ shareId: Number(sid), code: code }),
-                            success: function (res2) {
-                                if (res2.code === 200) {
-                                    const token = res2.data;
-                                    const recv = {
-                                        shareId: d.shareId || sid,
-                                        fileId: d.fileId,
-                                        filename: d.filename || ('file_' + d.fileId),
-                                        fileSize: d.fileSize || 0,
-                                        shareUser: d.shareUser || '',
-                                        token: token
-                                    };
-                                    addReceivedShare(recv);
-                                    renderReceivedList();
-                                    showSuccess('接收成功：' + recv.filename);
-                                    $('#recvShareId').val('');
-                                    $('#recvShareCode').val('');
-                                } else {
-                                    showError('校验失败：' + res2.msg);
-                                }
-                            },
-                            error: function (xhr) {
-                                const msg = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText;
-                                showError('校验失败：' + msg);
-                            },
-                            complete: function () { $('#btnReceiveShare').prop('disabled', false).text('接收分享'); }
-                        });
-                    } else {
-                        showError('获取分享信息失败：' + res.msg);
-                        $('#btnReceiveShare').prop('disabled', false).text('接收分享');
-                    }
-                }).fail(function (xhr) { showError('请求失败：' + (xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : xhr.statusText)); $('#btnReceiveShare').prop('disabled', false).text('接收分享'); });
-            });
-
-            $('#btnRefreshShares').off('click').on('click', function () { renderShareList(); loadMySharesFromServer(); });
-
-            // 初始渲染后同步后端历史分享
-            loadMySharesFromServer();
-
-            // 全选切换与批量下载 (分享列表)
-            $('#selectAllShares').off('change').on('change', function () {
-                const checked = $(this).prop('checked');
-                $('.share-select').prop('checked', checked);
-            });
-
-            $('#btnBatchDownload').off('click').on('click', function () {
-                const ids = [];
-                $('.share-select:checked').each(function () {
-                    const fid = $(this).data('fileid');
-                    if (fid) ids.push(fid);
-                });
-                if (ids.length === 0) return showError('请选择至少一个包含 fileId 的分享项进行打包下载');
-                const url = '/api/file/download/batch?fileIds=' + ids.join(',');
-                window.open(url, '_blank');
-            });
-
-            // 全选切换与批量下载 (已接收列表)
-            $('#selectAllReceived').on('change', function () {
-                const checked = $(this).prop('checked');
-                $('.recv-select').prop('checked', checked);
-            });
-
-            $('#btnBatchDownloadReceived').on('click', function () {
-                const ids = [];
-                $('.recv-select:checked').each(function () {
-                    const fid = $(this).data('fileid');
-                    if (fid) ids.push(fid);
-                });
-                if (ids.length === 0) return showError('请选择至少一个已接收项进行打包下载');
-                const url = '/api/file/download/batch?fileIds=' + ids.join(',');
-                window.open(url, '_blank');
-            });
-
-            // 全选切换与批量下载 (已接收列表)
-            $('#selectAllReceived').on('change', function () {
-                const checked = $(this).prop('checked');
-                $('.recv-select').prop('checked', checked);
-            });
-
-            $('#btnBatchDownloadReceived').on('click', function () {
-                const ids = [];
-                $('.recv-select:checked').each(function () {
-                    const fid = $(this).data('fileid');
-                    if (fid) ids.push(fid);
-                });
-                if (ids.length === 0) return showError('请选择至少一个已接收项进行打包下载');
-                const url = '/api/file/download/batch?fileIds=' + ids.join(',');
-                window.open(url, '_blank');
-            });
-
-            // 已删除“添加分享ID”功能（按项目要求移除）
-
-            // 首次渲染
-            renderShareList();
-
+        
         } else if (page === 'recycle') {
             // 回收站页面
             $content.html(`
@@ -687,7 +554,7 @@
 
         $tbody.html(`
             <tr>
-                <td colspan="5" class="text-center text-muted py-4">
+                <td colspan="6" class="text-center text-muted py-4">
                     <div class="spinner-border text-primary mb-2" role="status"></div>
                     <div>正在加载当前目录...</div>
                 </td>
@@ -696,14 +563,14 @@
 
         $.get('/api/file/list', { parentId: parentId, sort: 'time' }, function (res) {
             if (!res || res.code !== 200) {
-                $tbody.html('<tr><td colspan="5" class="text-center text-danger py-4">加载失败：' + (res && res.msg ? res.msg : '未知错误') + '</td></tr>');
+                $tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">加载失败：' + (res && res.msg ? res.msg : '未知错误') + '</td></tr>');
                 return;
             }
             const list = res.data || [];
             if (list.length === 0) {
                 $tbody.html(`
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-5">
+                        <td colspan="6" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                             当前目录暂无文件或文件夹
                         </td>
@@ -725,7 +592,14 @@
                     .attr('data-folder', isFolder)
                     .attr('data-name', f.filename);
                 
-                const $nameTd = $('<td>').css('padding-left', '25px');
+                // 复选框（文件夹不支持批量下载）
+                const $checkTd = $('<td>').css('padding-left', '25px');
+                if (!isFolder) {
+                    $checkTd.append('<input type="checkbox" class="form-check-input file-checkbox" data-id="' + f.fileId + '">');
+                }
+                $tr.append($checkTd);
+                
+                const $nameTd = $('<td>');
                 const $inner = $('<div class="d-flex align-items-center">')
                     .append('<i class="bi ' + iconInfo.icon + ' file-icon ' + iconInfo.colorClass + ' me-2"></i>')
                     .append('<span class="file-name text-truncate" title="' + f.filename + '">' + f.filename + '</span>');
@@ -735,9 +609,17 @@
                 $tr.append('<td>' + sizeText + '</td>');
                 $tr.append('<td>' + timeText + '</td>');
                 
-                // 操作列:添加分享按钮(仅限文件)
+                // 操作列:添加预览、下载、分享按钮
                 let opHtml = '';
                 if (!isFolder) {
+                    // 判断是否为图片或视频，支持预览（只支持 mp4 和 jpg/png）
+                    const ext = (f.filename.split('.').pop() || '').toLowerCase();
+                    const isPreviewable = ['jpg', 'jpeg', 'png', 'mp4'].includes(ext);
+                    
+                    if (isPreviewable) {
+                        opHtml += '<button class="btn btn-sm btn-outline-info btn-preview me-1" title="预览"><i class="bi bi-eye"></i></button>';
+                    }
+                    opHtml += '<button class="btn btn-sm btn-outline-secondary btn-download me-1" title="下载"><i class="bi bi-download"></i></button>';
                     opHtml += '<button class="btn btn-sm btn-outline-success btn-share me-1" title="分享文件"><i class="bi bi-share"></i></button>';
                 }
                 opHtml += '<button class="btn btn-sm btn-outline-primary btn-rename me-1">重命名</button>';
@@ -749,8 +631,11 @@
                 }
                 $tbody.append($tr);
             });
+            
+            // 更新全选状态
+            updateSelectAllFiles();
         }).fail(function () {
-            $tbody.html('<tr><td colspan="5" class="text-center text-danger py-4">加载失败，请稍后重试</td></tr>');
+            $tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">加载失败，请稍后重试</td></tr>');
         });
     }
 
@@ -771,9 +656,9 @@
 
     // 事件委托：点击文件夹行进入子目录（文件点击在后续阶段再处理）
     $(document).on('click', '#fileTableBody tr', function (e) {
-        // 如果点击的是操作按钮区域，不做目录跳转
+        // 如果点击的是操作按钮区域或复选框，不做目录跳转
         const target = e.target;
-        if ($(target).closest('.btn-rename, .btn-delete').length > 0) {
+        if ($(target).closest('.btn-rename, .btn-delete, .btn-share, .btn-preview, .btn-download, .file-checkbox').length > 0) {
             return;
         }
         const isFolder = $(this).attr('data-folder') === 'true';
@@ -782,6 +667,180 @@
         const name = $(this).find('.file-name').text();
         if (!id) return;
         enterFolder(id, name);
+    });
+
+    // 全选复选框
+    $(document).on('change', '#selectAllFiles', function() {
+        const checked = $(this).prop('checked');
+        $('.file-checkbox').prop('checked', checked);
+        updateBatchDownloadBtn();
+    });
+
+    // 监听单个复选框变化
+    $(document).on('change', '.file-checkbox', function() {
+        updateSelectAllFiles();
+        updateBatchDownloadBtn();
+    });
+
+    // 更新全选复选框状态
+    function updateSelectAllFiles() {
+        const totalCheckboxes = $('.file-checkbox').length;
+        const checkedCheckboxes = $('.file-checkbox:checked').length;
+        $('#selectAllFiles').prop('checked', totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes);
+    }
+
+    // 更新批量下载按钮显示状态
+    function updateBatchDownloadBtn() {
+        const checkedCount = $('.file-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#btnBatchDownloadFiles').removeClass('d-none').text('批量下载 (' + checkedCount + ')');
+        } else {
+            $('#btnBatchDownloadFiles').addClass('d-none');
+        }
+    }
+
+    // 批量下载按钮点击
+    $(document).on('click', '#btnBatchDownloadFiles', function() {
+        const fileIds = [];
+        $('.file-checkbox:checked').each(function() {
+            fileIds.push(Number($(this).attr('data-id')));
+        });
+        
+        if (fileIds.length === 0) {
+            return showError('请选择要下载的文件');
+        }
+        
+        // 使用后端批量下载接口（打包为zip）
+        const url = '/api/file/download/batch?fileIds=' + fileIds.join(',');
+        window.open(url, '_blank');
+        
+        // 取消所有选中
+        $('.file-checkbox').prop('checked', false);
+        updateSelectAllFiles();
+        updateBatchDownloadBtn();
+    });
+
+    // 文件预览（仅图片和视频）
+    $(document).on('click', '.btn-preview', function(e) {
+        e.stopPropagation();
+        const $tr = $(this).closest('tr');
+        const fileId = Number($tr.attr('data-id'));
+        const fileName = $tr.attr('data-name');
+        
+        if (!fileId) return;
+        
+        // 判断文件类型
+        const ext = (fileName.split('.').pop() || '').toLowerCase();
+        const isImage = ['jpg', 'jpeg', 'png'].includes(ext);
+        const isVideo = ext === 'mp4';
+        
+        const fileUrl = '/api/file/download/' + fileId;
+        
+        if (isImage) {
+            // 图片预览弹窗
+            $('#imagePreviewTitle').text(fileName);
+            $('#previewImage').attr('src', fileUrl);
+            const imageModal = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
+            imageModal.show();
+        } else if (isVideo) {
+            // 视频预览弹窗
+            $('#videoPreviewTitle').text(fileName);
+            const videoElement = document.getElementById('previewVideo');
+            
+            // 先移除所有旧的事件监听
+            $('#videoPreviewModal').off('shown.bs.modal hidden.bs.modal');
+            
+            // 重置视频元素
+            videoElement.pause();
+            videoElement.currentTime = 0;
+            videoElement.src = '';
+            
+            // 设置新的视频源
+            videoElement.src = fileUrl;
+            
+            // 等待视频元数据加载完成
+            videoElement.addEventListener('loadedmetadata', function onLoaded() {
+                console.log('视频元数据加载完成，时长：', videoElement.duration);
+                videoElement.removeEventListener('loadedmetadata', onLoaded);
+            });
+            
+            // 处理加载错误（但忽略关闭时的错误）
+            let isClosing = false;
+            videoElement.addEventListener('error', function onError(e) {
+                if (!isClosing) {
+                    console.error('视频加载失败：', e);
+                    showError('视频加载失败，请检查文件格式');
+                }
+                videoElement.removeEventListener('error', onError);
+            });
+            
+            // 强制加载视频
+            videoElement.load();
+            
+            // 显示弹窗
+            const videoModal = new bootstrap.Modal(document.getElementById('videoPreviewModal'));
+            videoModal.show();
+            
+            // 弹窗完全显示后尝试播放
+            $('#videoPreviewModal').on('shown.bs.modal', function() {
+                // 等待一小段时间确保视频已加载
+                setTimeout(function() {
+                    videoElement.play().then(function() {
+                        console.log('视频开始播放');
+                    }).catch(function(err) {
+                        console.log('自动播放被阻止，用户需手动播放', err);
+                    });
+                }, 100);
+            });
+            
+            // 弹窗关闭时清理资源
+            $('#videoPreviewModal').on('hidden.bs.modal', function() {
+                isClosing = true; // 标记正在关闭，忽略 error 事件
+                videoElement.pause();
+                videoElement.currentTime = 0;
+                videoElement.src = ''; // 这里会触发 error，但我们忽略它
+                videoElement.load();
+            });
+        } else {
+            // 其他类型暂不支持预览
+            showInfo('该文件格式暂不支持在线预览，请下载后查看');
+        }
+    });
+
+    // 文件下载
+    $(document).on('click', '.btn-download', function(e) {
+        e.stopPropagation();
+        const $tr = $(this).closest('tr');
+        const fileId = Number($tr.attr('data-id'));
+        const fileName = $tr.attr('data-name');
+        
+        if (!fileId) return;
+        
+        const url = '/api/file/download/' + fileId;
+        fetch(url, { method: 'GET' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('服务器返回 ' + res.status);
+                const disposition = res.headers.get('Content-Disposition') || '';
+                let filename = fileName || ('file_' + fileId);
+                const m = /filename\*?=([^;]+)/i.exec(disposition);
+                if (m) {
+                    let raw = m[1].trim();
+                    raw = raw.replace(/^UTF-8''/, '').replace(/^"|"$/g, '');
+                    try { filename = decodeURIComponent(raw); } catch (e) { filename = raw; }
+                }
+                return res.blob().then(function (blob) { return { blob: blob, filename: filename }; });
+            })
+            .then(function (obj) {
+                const blobUrl = URL.createObjectURL(obj.blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = obj.filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
+            })
+            .catch(function (err) { showError('下载失败：' + err.message); });
     });
 
     // 文件重命名（前端弹窗输入新名称）
@@ -1000,6 +1059,37 @@
         window.currentParentId = id;
         renderFileBreadcrumb();
         loadFileList();
+    });
+
+    // 新建文件夹弹窗
+    $(document).on('click', '#btnCreateFolder', function () {
+        const folderName = prompt('请输入文件夹名称：');
+        if (!folderName || !folderName.trim()) {
+            return;
+        }
+        
+        const parentId = window.currentParentId != null ? window.currentParentId : 0;
+        
+        $.ajax({
+            url: '/api/file/folder',
+            type: 'POST',
+            data: {
+                parentId: parentId,
+                folderName: folderName.trim()
+            },
+            success: function(res) {
+                if (res && res.code === 200) {
+                    showSuccess('文件夹创建成功');
+                    loadFileList();
+                } else {
+                    showError('创建失败：' + (res && res.msg ? res.msg : '未知错误'));
+                }
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.msg) || xhr.statusText || '网络错误';
+                showError('创建失败：' + msg);
+            }
+        });
     });
 
     // 打开上传弹窗:根据当前目录更新路径显示
@@ -1720,7 +1810,308 @@
     </div>
 </div>
 
+<!-- 图片预览弹窗 -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="background: #000; border: none;">
+            <div class="modal-header" style="border: none; background: rgba(0,0,0,0.8); position: absolute; top: 0; left: 0; right: 0; z-index: 1;">
+                <h5 class="modal-title text-white" id="imagePreviewTitle">图片预览</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center" style="padding: 60px 20px 20px;">
+                <img id="previewImage" src="" alt="预览图片" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 视频预览弹窗 -->
+<div class="modal fade" id="videoPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="background: #000; border: none;">
+            <div class="modal-header" style="border: none; background: rgba(0,0,0,0.8);">
+                <h5 class="modal-title text-white" id="videoPreviewTitle">视频预览</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <video id="previewVideo" controls controlsList="nodownload" style="width: 100%; max-height: 70vh; background: #000;">
+                    您的浏览器不支持视频播放。
+                </video>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    // ===== 分享与转存功能 =====
+    function loadSharesList() {
+        const $tbody = $('#sharesTableBody');
+        if ($tbody.length === 0) return;
+
+        $tbody.html(`
+            <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                    <div>正在加载分享列表...</div>
+                </td>
+            </tr>
+        `);
+
+        // 调用后端分享列表接口（假设后端开放了 /api/share/my 接口）
+        $.get('/api/share/my', function (res) {
+            if (!res || res.code !== 200) {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted py-4">暂无分享或后端未开放分享列表接口</td></tr>');
+                return;
+            }
+            const list = res.data || [];
+            if (list.length === 0) {
+                $tbody.html(`
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-5">
+                            <i class="bi bi-share fs-1 d-block mb-2" style="opacity: 0.3;"></i>
+                            还没有创建任何分享
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+            $tbody.empty();
+            list.forEach(function (s) {
+                const $tr = $('<tr>')
+                    .addClass('share-row')
+                    .attr('data-id', s.shareId);
+                
+                // 文件名
+                const $nameTd = $('<td>').css('padding-left', '25px');
+                const $inner = $('<div class="d-flex align-items-center">');
+                
+                // 根据文件类型显示图标
+                const iconInfo = getFileIcon(s.filename || '文件', false, s.fileType);
+                $inner.append('<i class="bi ' + iconInfo.icon + ' file-icon ' + iconInfo.colorClass + ' me-2"></i>');
+                $inner.append('<span class="file-name text-truncate" title="' + (s.filename || '未知文件') + '">' + (s.filename || '未知文件') + '</span>');
+                $nameTd.append($inner);
+                $tr.append($nameTd);
+                
+                // 分享 ID
+                $tr.append('<td>' + (s.shareId || '-') + '</td>');
+                
+                // 创建时间
+                $tr.append('<td>' + (s.createTime ? formatTime(s.createTime) : '-') + '</td>');
+                
+                // 有效期
+                let expireText = '永久';
+                if (s.expireTime) {
+                    expireText = formatTime(s.expireTime);
+                }
+                $tr.append('<td>' + expireText + '</td>');
+                
+                // 操作列
+                let opHtml = '';
+                opHtml += '<button class="btn btn-sm btn-outline-info btn-copy-link me-1" title="复制链接" data-share-id="' + s.shareId + '" data-code="' + (s.code || '') + '"><i class="bi bi-link-45deg"></i></button>';
+                opHtml += '<button class="btn btn-sm btn-outline-success btn-show-code me-1" title="查看提取码" data-code="' + (s.code || '') + '"><i class="bi bi-key-fill"></i></button>';
+                opHtml += '<button class="btn btn-sm btn-outline-primary btn-view-share me-1" title="查看" data-share-id="' + s.shareId + '"><i class="bi bi-eye"></i></button>';
+                opHtml += '<button class="btn btn-sm btn-outline-danger btn-cancel-share" title="取消分享" data-share-id="' + s.shareId + '"><i class="bi bi-x-circle"></i></button>';
+                $tr.append('<td class="text-end" style="padding-right: 25px;">' + opHtml + '</td>');
+                
+                $tbody.append($tr);
+            });
+        }).fail(function () {
+            $tbody.html('<tr><td colspan="5" class="text-center text-muted py-4">暂无分享或后端未开放分享列表接口</td></tr>');
+        });
+    }
+
+    function loadSavedList() {
+        const $tbody = $('#savedTableBody');
+        if ($tbody.length === 0) {
+            console.warn('转存列表表格不存在');
+            return;
+        }
+
+        // 从 localStorage 获取转存记录（改为跨标签页共享）
+        const savedListJson = localStorage.getItem('savedFilesList') || '[]';
+        console.log('=== 开始加载转存列表 ===');
+        console.log('localStorage 原始数据:', savedListJson);
+        
+        let list = [];
+        try {
+            list = JSON.parse(savedListJson);
+            console.log('解析后的数据:', list);
+        } catch(e) {
+            console.error('解析 JSON 失败:', e);
+            list = [];
+        }
+        
+        console.log('最终转存记录数量:', list.length);
+
+        if (list.length === 0) {
+            $tbody.html(`
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        暂无转存记录
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+        
+        $tbody.empty();
+        list.forEach(function (s) {
+            const $tr = $('<tr>')
+                .addClass('saved-row')
+                .attr('data-id', s.fileId);
+            
+            // 文件名
+            const $nameTd = $('<td>').css('padding-left', '25px');
+            const $inner = $('<div class="d-flex align-items-center">');
+            
+            const iconInfo = getFileIcon(s.filename || '文件', false, s.fileType);
+            $inner.append('<i class="bi ' + iconInfo.icon + ' file-icon ' + iconInfo.colorClass + ' me-2"></i>');
+            $inner.append('<span class="file-name text-truncate" title="' + (s.filename || '未知文件') + '">' + (s.filename || '未知文件') + '</span>');
+            $nameTd.append($inner);
+            $tr.append($nameTd);
+            
+            // 原分享 ID
+            $tr.append('<td>' + (s.shareId || '-') + '</td>');
+            
+            // 转存时间
+            $tr.append('<td>' + (s.saveTime ? formatTime(s.saveTime) : '-') + '</td>');
+            
+            // 分享者
+            $tr.append('<td>' + (s.shareUser || '未知') + '</td>');
+            
+            // 操作列
+            let opHtml = '';
+            opHtml += '<button class="btn btn-sm btn-outline-primary btn-open-saved" title="打开" data-file-id="' + s.fileId + '"><i class="bi bi-folder2-open"></i> 打开</button>';
+            $tr.append('<td class="text-end" style="padding-right: 25px;">' + opHtml + '</td>');
+            
+            $tbody.append($tr);
+        });
+    }
+
+    // 复制分享链接
+    $(document).on('click', '.btn-copy-link', function() {
+        const shareId = $(this).attr('data-share-id');
+        const code = $(this).attr('data-code');
+        const link = window.location.origin + '/share/' + shareId;
+        const text = '分享链接：' + link + (code ? ('\n提取码：' + code) : '');
+        
+        // 复制到剪贴板
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                showSuccess('链接已复制到剪贴板');
+            }).catch(function() {
+                showError('复制失败，请手动复制');
+            });
+        } else {
+            // 退让方案
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showSuccess('链接已复制到剪贴板');
+            } catch(e) {
+                showError('复制失败，请手动复制');
+            }
+            document.body.removeChild(textarea);
+        }
+    });
+
+    // 查看提取码
+    $(document).on('click', '.btn-show-code', function() {
+        const code = $(this).attr('data-code');
+        if (code) {
+            // 使用 Bootstrap 的 toast 或 alert 显示
+            alert('提取码：' + code + '\n\n点击确定后可复制');
+            
+            // 自动复制到剪贴板
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(code).then(function() {
+                    showSuccess('提取码已复制：' + code);
+                }).catch(function() {
+                    showInfo('提取码：' + code);
+                });
+            } else {
+                showInfo('提取码：' + code);
+            }
+        } else {
+            showError('该分享没有提取码');
+        }
+    });
+
+    // 查看分享
+    $(document).on('click', '.btn-view-share', function() {
+        const shareId = $(this).attr('data-share-id');
+        window.open('/share/' + shareId, '_blank');
+    });
+
+    // 取消分享
+    $(document).on('click', '.btn-cancel-share', function() {
+        const shareId = $(this).attr('data-share-id');
+        if (!confirm('确认要取消这个分享吗？')) return;
+        
+        $.ajax({
+            url: '/api/share/' + shareId,
+            type: 'DELETE',
+            success: function(res) {
+                if (res && res.code === 200) {
+                    showSuccess('已取消分享');
+                    loadSharesList();
+                } else {
+                    showError('取消失败：' + (res && res.msg ? res.msg : '未知错误'));
+                }
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.msg) || xhr.statusText || '网络错误';
+                showError('取消失败：' + msg);
+            }
+        });
+    });
+
+    // 打开转存的文件（跳转到我的文件并高亮）
+    $(document).on('click', '.btn-open-saved', function() {
+        const fileId = Number($(this).attr('data-file-id'));
+        const fileName = $(this).closest('tr').find('.file-name').text();
+        
+        // 切换到“我的文件”页面（直接触发 switchPage）
+        $('.nav-link').removeClass('active');
+        $('.nav-link[data-page="files"]').addClass('active');
+        switchPage('files');
+        
+        // 等待文件列表加载完成后高亮对应文件
+        // 增加等待时间，并检测加载状态
+        let attempts = 0;
+        const maxAttempts = 10; // 最多尝试 10 次
+        
+        const checkAndHighlight = function() {
+            attempts++;
+            const $targetRow = $('#fileTableBody tr[data-id="' + fileId + '"]');
+            
+            if ($targetRow.length > 0) {
+                // 找到了文件
+                $targetRow[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // 高亮效果
+                $targetRow.addClass('table-active');
+                setTimeout(function() {
+                    $targetRow.removeClass('table-active');
+                }, 2000);
+                
+                showSuccess('已定位到文件：' + fileName);
+            } else if (attempts < maxAttempts) {
+                // 还没加载完，继续等待
+                setTimeout(checkAndHighlight, 300);
+            } else {
+                // 超过最大尝试次数
+                showInfo('文件「' + fileName + '」已转存到根目录，请在文件列表中查找');
+            }
+        };
+        
+        // 首次检查延迟 500ms，确保页面已切换
+        setTimeout(checkAndHighlight, 500);
+    });
+
     // ===== 回收站功能 =====
     function loadRecycleList() {
         const $tbody = $('#recycleTableBody');

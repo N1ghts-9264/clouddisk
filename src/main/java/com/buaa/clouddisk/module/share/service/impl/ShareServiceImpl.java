@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -111,6 +112,10 @@ public class ShareServiceImpl extends ServiceImpl<ShareMapper, Share> implements
         LambdaQueryWrapper<Share> qw = new LambdaQueryWrapper<>();
         qw.eq(Share::getUserId, userId).eq(Share::getStatus, 0).orderByDesc(Share::getCreateTime);
         List<Share> shares = this.list(qw);
+        
+        // 时间格式化器
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        
         return shares.stream().map(share -> {
             SysFile file = fileMapper.selectById(share.getFileId()); // 修正：使用 SysFile
             User user = userMapper.selectById(share.getUserId());
@@ -122,6 +127,12 @@ public class ShareServiceImpl extends ServiceImpl<ShareMapper, Share> implements
             vo.setShareUser(user != null ? user.getNickname() : "我");
             boolean isExpired = share.getExpireTime() != null && LocalDateTime.now().isAfter(share.getExpireTime());
             vo.setExpired(isExpired);
+            
+            // 新增：返回提取码和时间信息
+            vo.setCode(share.getCode());
+            vo.setCreateTime(share.getCreateTime() != null ? share.getCreateTime().format(formatter) : null);
+            vo.setExpireTime(share.getExpireTime() != null ? share.getExpireTime().format(formatter) : "永久");
+            
             return vo;
         }).collect(Collectors.toList());
     }
